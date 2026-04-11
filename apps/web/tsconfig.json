@@ -3,9 +3,10 @@
   "compilerOptions": {
     "allowJs": false,
     "checkJs": false,
+    "skipLibCheck": true,
     "strict": true,
-    "types": ["svelte", "vite/client", "vitest/globals", "node"]
+    "types": ["svelte", "vite/client", "vitest/globals", "node", "vite-plugin-pwa/client"]
   },
-  "include": ["src/**/*.d.ts", "src/**/*.ts", "src/**/*.svelte"],
+  "include": [".svelte-kit/ambient.d.ts", "src/**/*.d.ts", "src/**/*.ts", "src/**/*.svelte", "../../docs/**/*.md"],
   "exclude": ["build", "node_modules"]
 }

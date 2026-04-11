@@ -1,0 +1,6 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "shieldcv-web",
+  "compatibility_date": "2026-04-11",
+  "compatibility_flags": ["nodejs_compat"]
+}

@@ -1,6 +1,6 @@
 # ShieldCV
 
-ShieldCV is a local-first, mobile-first resume security platform designed to protect sensitive resume data without sending content off-device. The app is built as a static SvelteKit PWA and uses workspace packages for crypto, storage, audit, AI, and compliance concerns.
+ShieldCV is a local-first, mobile-first resume security platform designed to protect sensitive resume data without sending content off-device. The app is built as a SvelteKit PWA for Cloudflare Pages and uses workspace packages for crypto, storage, audit, AI, and compliance concerns.
 
 ## Quickstart
 
@@ -19,9 +19,13 @@ ShieldCV is a local-first, mobile-first resume security platform designed to pro
 - Defense in depth. The web app ships with strict browser security headers and an offline-first PWA posture.
 - Auditability. Security-relevant events are tracked in an append-only encrypted audit log.
 
+## Deployment
+
+ShieldCV deploys to Cloudflare Pages with a thin Functions-style worker handler that sets per-request CSP nonces and security headers. The handler never processes user data. All resume data remains in encrypted IndexedDB in the browser.
+
 ## Workspace Layout
 
-- `apps/web`: Static SvelteKit PWA for Cloudflare Pages.
+- `apps/web`: SvelteKit PWA for Cloudflare Pages with per-request CSP headers.
 - `packages/crypto`: WebCrypto helpers.
 - `packages/storage`: Encrypted IndexedDB abstractions.
 - `packages/ai`: Local inference integration points.

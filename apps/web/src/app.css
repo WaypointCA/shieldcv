@@ -1,1 +1,438 @@
 @import 'tailwindcss';
+
+:root {
+  color-scheme: dark;
+  --bg: #08111f;
+  --bg-elevated: rgba(11, 18, 32, 0.9);
+  --bg-muted: rgba(15, 23, 42, 0.78);
+  --surface: rgba(15, 23, 42, 0.82);
+  --surface-strong: rgba(15, 23, 42, 0.96);
+  --border: rgba(148, 163, 184, 0.18);
+  --border-strong: rgba(148, 163, 184, 0.3);
+  --text: #e5eefc;
+  --text-soft: #b8c4d9;
+  --text-muted: #8ea0bc;
+  --accent: #38bdf8;
+  --accent-strong: #0ea5e9;
+  --accent-contrast: #06101d;
+  --success: #34d399;
+  --warning: #fbbf24;
+  --shadow: 0 28px 80px rgba(2, 6, 23, 0.42);
+  --page-gradient:
+    radial-gradient(circle at top, rgba(14, 165, 233, 0.18), transparent 28%),
+    linear-gradient(180deg, #0b1220 0%, #08111f 100%);
+}
+
+:root[data-theme='light'] {
+  color-scheme: light;
+  --bg: #edf4fb;
+  --bg-elevated: rgba(255, 255, 255, 0.86);
+  --bg-muted: rgba(241, 245, 249, 0.9);
+  --surface: rgba(255, 255, 255, 0.9);
+  --surface-strong: rgba(255, 255, 255, 0.97);
+  --border: rgba(15, 23, 42, 0.12);
+  --border-strong: rgba(15, 23, 42, 0.2);
+  --text: #102033;
+  --text-soft: #31435d;
+  --text-muted: #58708f;
+  --accent: #0369a1;
+  --accent-strong: #0284c7;
+  --accent-contrast: #eff6ff;
+  --success: #059669;
+  --warning: #d97706;
+  --shadow: 0 24px 70px rgba(148, 163, 184, 0.28);
+  --page-gradient:
+    radial-gradient(circle at top, rgba(56, 189, 248, 0.18), transparent 24%),
+    linear-gradient(180deg, #f8fbff 0%, #eaf2fb 100%);
+}
+
+html,
+body {
+  min-height: 100%;
+  background: var(--bg);
+  color: var(--text);
+}
+
+body {
+  margin: 0;
+  font-family:
+    Inter,
+    ui-sans-serif,
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    'Segoe UI',
+    sans-serif;
+  background-image: var(--page-gradient);
+}
+
+a,
+button {
+  -webkit-tap-highlight-color: transparent;
+}
+
+button {
+  cursor: pointer;
+}
+
+.app-shell {
+  min-height: 100vh;
+}
+
+.shell-nav {
+  display: none;
+}
+
+.shell-main {
+  min-height: 100vh;
+  padding: 1.25rem 1rem calc(6rem + env(safe-area-inset-bottom));
+}
+
+.shell-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin: 0 auto 1rem;
+  max-width: 72rem;
+}
+
+.shell-content {
+  display: grid;
+  gap: 1rem;
+  margin: 0 auto;
+  max-width: 72rem;
+}
+
+.shell-kicker,
+.section-kicker {
+  margin: 0 0 0.35rem;
+  color: var(--accent);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+}
+
+.shell-page-title,
+.hero-card h3,
+.content-card h3,
+.posture-card h3,
+.modal-panel h4 {
+  margin: 0;
+  color: var(--text);
+  line-height: 1.1;
+}
+
+.shell-page-title {
+  font-size: clamp(1.65rem, 3vw, 2.4rem);
+}
+
+.hero-card,
+.content-card,
+.posture-card {
+  border: 1px solid var(--border);
+  background: var(--surface);
+  backdrop-filter: blur(18px);
+  border-radius: 1.5rem;
+  box-shadow: var(--shadow);
+}
+
+.hero-card {
+  padding: 1.25rem;
+}
+
+.hero-card h3 {
+  font-size: clamp(2rem, 7vw, 3.4rem);
+  max-width: 12ch;
+}
+
+.hero-card p,
+.content-card p,
+.modal-panel p {
+  color: var(--text-soft);
+  line-height: 1.7;
+}
+
+.posture-card,
+.content-card {
+  padding: 1.25rem;
+}
+
+.section-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.posture-grid {
+  display: grid;
+  gap: 0.85rem;
+}
+
+.posture-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.9rem;
+  width: 100%;
+  padding: 1rem;
+  border: 1px solid var(--border);
+  border-radius: 1.15rem;
+  background: var(--bg-muted);
+  color: inherit;
+  text-align: left;
+}
+
+.posture-copy {
+  display: grid;
+  gap: 0.2rem;
+}
+
+.posture-copy strong {
+  color: var(--text);
+  font-size: 0.98rem;
+}
+
+.posture-copy span {
+  color: var(--text-muted);
+  font-size: 0.92rem;
+}
+
+.status-dot {
+  width: 0.8rem;
+  height: 0.8rem;
+  margin-top: 0.2rem;
+  border-radius: 999px;
+  flex: none;
+  box-shadow: 0 0 0 0.25rem color-mix(in srgb, currentColor 18%, transparent);
+}
+
+.status-dot.success {
+  color: var(--success);
+  background: var(--success);
+}
+
+.status-dot.warning {
+  color: var(--warning);
+  background: var(--warning);
+}
+
+.shell-brand {
+  display: flex;
+  align-items: center;
+  gap: 0.9rem;
+}
+
+.shell-brand__mark {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: 0.95rem;
+  background: linear-gradient(145deg, var(--accent), var(--accent-strong));
+  color: var(--accent-contrast);
+}
+
+.shell-title {
+  margin: 0;
+  font-size: 1rem;
+  color: var(--text);
+}
+
+.nav-list {
+  display: grid;
+  gap: 0.55rem;
+}
+
+.nav-link,
+.tabbar-link {
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+  text-decoration: none;
+  color: var(--text-soft);
+  border-radius: 1rem;
+  transition:
+    background-color 120ms ease,
+    color 120ms ease,
+    border-color 120ms ease;
+}
+
+.nav-link {
+  padding: 0.9rem 1rem;
+  border: 1px solid transparent;
+}
+
+.nav-link.active,
+.tabbar-link.active {
+  background: color-mix(in srgb, var(--accent) 18%, transparent);
+  color: var(--text);
+  border-color: color-mix(in srgb, var(--accent) 24%, transparent);
+}
+
+.shell-actions {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.shell-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 2.75rem;
+  padding: 0.8rem 1rem;
+  border-radius: 999px;
+  border: 1px solid var(--border-strong);
+  background: transparent;
+  color: var(--text);
+  font-weight: 600;
+}
+
+.shell-button--primary {
+  background: linear-gradient(145deg, var(--accent), var(--accent-strong));
+  border-color: transparent;
+  color: var(--accent-contrast);
+}
+
+.shell-button--mobile {
+  display: none;
+}
+
+.tabbar {
+  position: fixed;
+  inset: auto 0 0;
+  z-index: 30;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.5rem;
+  padding:
+    0.75rem 0.75rem
+    calc(0.75rem + env(safe-area-inset-bottom));
+  border-top: 1px solid var(--border);
+  background: color-mix(in srgb, var(--surface-strong) 92%, transparent);
+  backdrop-filter: blur(18px);
+}
+
+.tabbar-link {
+  flex-direction: column;
+  justify-content: center;
+  padding: 0.7rem 0.35rem;
+  border: 1px solid transparent;
+  font-size: 0.78rem;
+}
+
+.stub-card,
+.settings-card,
+.prose-card {
+  max-width: 54rem;
+}
+
+.posture-dialog {
+  width: min(42rem, calc(100% - 1.5rem));
+  margin: auto;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: 1.5rem;
+  background: var(--surface-strong);
+  color: var(--text);
+  box-shadow: var(--shadow);
+}
+
+.posture-dialog::backdrop {
+  background: rgba(2, 6, 23, 0.72);
+  backdrop-filter: blur(8px);
+}
+
+.dialog-header,
+.dialog-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.dialog-header {
+  padding: 1.25rem 1.25rem 0;
+}
+
+.dialog-body {
+  display: grid;
+  gap: 1rem;
+  padding: 1rem 1.25rem 0;
+}
+
+.dialog-actions {
+  justify-content: flex-end;
+  padding: 1.25rem;
+}
+
+.dialog-close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  border: 1px solid var(--border-strong);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--text);
+  font-size: 1.5rem;
+  line-height: 1;
+}
+
+.prose-card :global(h1),
+.prose-card :global(h2) {
+  color: var(--text);
+  line-height: 1.15;
+}
+
+.prose-card :global(p),
+.prose-card :global(li) {
+  color: var(--text-soft);
+  line-height: 1.75;
+}
+
+.prose-card :global(ul) {
+  padding-left: 1.25rem;
+}
+
+@media (min-width: 48rem) {
+  .app-shell {
+    display: grid;
+    grid-template-columns: 18rem minmax(0, 1fr);
+  }
+
+  .shell-nav {
+    position: sticky;
+    top: 0;
+    display: grid;
+    align-content: start;
+    gap: 1.5rem;
+    min-height: 100vh;
+    padding: 2rem 1.25rem;
+    border-right: 1px solid var(--border);
+    background: color-mix(in srgb, var(--bg-elevated) 96%, transparent);
+    backdrop-filter: blur(18px);
+  }
+
+  .shell-main {
+    padding: 2rem;
+  }
+
+  .shell-header {
+    margin-bottom: 1.5rem;
+  }
+
+  .hero-card,
+  .content-card,
+  .posture-card {
+    padding: 1.5rem;
+  }
+
+  .tabbar {
+    display: none;
+  }
+}

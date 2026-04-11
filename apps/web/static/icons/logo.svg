@@ -1,0 +1,29 @@
+<svg width="1024" height="1024" viewBox="0 0 1024 1024" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="1024" height="1024" rx="224" fill="#0B1220" />
+  <path
+    d="M512 132L786 236V470C786 624 680 760 530 796L512 800L494 796C344 760 238 624 238 470V236L512 132Z"
+    fill="url(#shield)"
+  />
+  <path
+    d="M512 198L726 279V465C726 589 643 694 525 726L512 729L499 726C381 694 298 589 298 465V279L512 198Z"
+    fill="#0B1220"
+  />
+  <text
+    x="512"
+    y="564"
+    text-anchor="middle"
+    font-family="Inter, Arial, sans-serif"
+    font-size="270"
+    font-weight="800"
+    letter-spacing="-0.06em"
+    fill="#D8F0FF"
+  >
+    sc
+  </text>
+  <defs>
+    <linearGradient id="shield" x1="278" y1="196" x2="769" y2="768" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#38BDF8" />
+      <stop offset="1" stop-color="#0F766E" />
+    </linearGradient>
+  </defs>
+</svg>
