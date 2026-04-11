@@ -1,5 +1,4 @@
 module.exports = {
-  extends: ['plugin:svelte/recommended'],
   overrides: [
     {
       files: ['*.svelte'],

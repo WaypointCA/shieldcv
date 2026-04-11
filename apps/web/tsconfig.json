@@ -4,7 +4,8 @@
     "allowJs": false,
     "checkJs": false,
     "strict": true,
-    "types": ["svelte", "vite/client", "vitest/globals"]
+    "types": ["svelte", "vite/client", "vitest/globals", "node"]
   },
+  "include": ["src/**/*.d.ts", "src/**/*.ts", "src/**/*.svelte"],
   "exclude": ["build", "node_modules"]
 }
