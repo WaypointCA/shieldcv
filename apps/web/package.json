@@ -1,0 +1,40 @@
+{
+  "name": "web",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite dev",
+    "build": "vite build",
+    "preview": "vite preview",
+    "lint": "eslint . --ext .js,.ts,.svelte",
+    "typecheck": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
+    "test": "vitest run --passWithNoTests"
+  },
+  "dependencies": {
+    "@shieldcv/ai": "workspace:*",
+    "@shieldcv/audit": "workspace:*",
+    "@shieldcv/compliance": "workspace:*",
+    "@shieldcv/crypto": "workspace:*",
+    "@shieldcv/storage": "workspace:*",
+    "@sveltejs/adapter-static": "3.0.1",
+    "@sveltejs/kit": "2.5.18",
+    "@types/dompurify": "^3.2.0",
+    "dompurify": "^3.3.3",
+    "lucide-svelte": "^1.0.1",
+    "mdsvex": "^0.12.7",
+    "svelte": "4.2.19"
+  },
+  "devDependencies": {
+    "@sveltejs/vite-plugin-svelte": "3.1.2",
+    "@tailwindcss/vite": "^4.1.4",
+    "@tsconfig/svelte": "^5.0.4",
+    "eslint-config-sveltekit": "workspace:*",
+    "jsdom": "^26.0.0",
+    "svelte-check": "3.8.6",
+    "tailwindcss": "^4.1.4",
+    "vite": "5.4.21",
+    "vite-plugin-pwa": "^0.21.1",
+    "vitest": "^3.1.1"
+  }
+}
