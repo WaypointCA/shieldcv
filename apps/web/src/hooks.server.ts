@@ -1,21 +1,15 @@
 import type { Handle } from '@sveltejs/kit';
+import { getSecurityHeaders } from '$lib/security';
 
-const RESPONSE_SECURITY_HEADERS = {
-  'Strict-Transport-Security': 'max-age=63072000; includeSubDomains; preload',
-  'X-Content-Type-Options': 'nosniff',
-  'X-Frame-Options': 'DENY',
-  'Referrer-Policy': 'no-referrer',
-  'Permissions-Policy':
-    'camera=(), microphone=(), geolocation=(), payment=(), usb=(), magnetometer=(), gyroscope=(), accelerometer=(), interest-cohort=()',
-  'Cross-Origin-Opener-Policy': 'same-origin',
-  'Cross-Origin-Embedder-Policy': 'require-corp',
-  'Cross-Origin-Resource-Policy': 'same-origin',
-} as const;
+function extractCspNonce(response: Response): string | undefined {
+  return response.headers.get('content-security-policy')?.match(/'nonce-([^']+)'/)?.[1];
+}
 
 export const handle: Handle = async ({ event, resolve }) => {
   const response = await resolve(event);
+  const nonce = extractCspNonce(response);
 
-  for (const [header, value] of Object.entries(RESPONSE_SECURITY_HEADERS)) {
+  for (const [header, value] of Object.entries(getSecurityHeaders(event.url.pathname, { nonce }))) {
     response.headers.set(header, value);
   }
 

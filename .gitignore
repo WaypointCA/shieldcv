@@ -8,3 +8,11 @@ vite.config.ts.timestamp-*
 *.tsbuildinfo
 
 .DS_Store
+
+# Cloudflare/Wrangler
+.wrangler/
+**/.wrangler/
+
+# Playwright
+test-results/
+playwright-report/

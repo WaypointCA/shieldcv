@@ -4,36 +4,29 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { defineConfig } from 'vite';
 import { VitePWA } from 'vite-plugin-pwa';
+import { getSecurityHeaders } from './src/lib/security';
 
 const projectRoot = path.dirname(fileURLToPath(import.meta.url));
 const docsRoot = path.resolve(projectRoot, '../../docs');
 
-const securityHeaders = {
-  'Strict-Transport-Security': 'max-age=63072000; includeSubDomains; preload',
-  'X-Content-Type-Options': 'nosniff',
-  'X-Frame-Options': 'DENY',
-  'Referrer-Policy': 'no-referrer',
-  'Permissions-Policy':
-    'camera=(), microphone=(), geolocation=(), payment=(), usb=(), magnetometer=(), gyroscope=(), accelerometer=(), interest-cohort=()',
-  'Cross-Origin-Opener-Policy': 'same-origin',
-  'Cross-Origin-Embedder-Policy': 'require-corp',
-  'Cross-Origin-Resource-Policy': 'same-origin',
-};
-
 const shieldcvSecurityHeaders = {
   name: 'shieldcv-security-headers',
-  configureServer(server: { middlewares: { use: (fn: (req: unknown, res: { setHeader: (key: string, value: string) => void }, next: () => void) => void) => void } }) {
-    server.middlewares.use((_req, res, next) => {
-      for (const [key, value] of Object.entries(securityHeaders)) {
+  configureServer(server: { middlewares: { use: (fn: (req: { url?: string }, res: { setHeader: (key: string, value: string) => void }, next: () => void) => void) => void } }) {
+    server.middlewares.use((req, res, next) => {
+      const pathname = req.url ? new URL(req.url, 'http://shieldcv.local').pathname : '/';
+
+      for (const [key, value] of Object.entries(getSecurityHeaders(pathname))) {
         res.setHeader(key, value);
       }
 
       next();
     });
   },
-  configurePreviewServer(server: { middlewares: { use: (fn: (req: unknown, res: { setHeader: (key: string, value: string) => void }, next: () => void) => void) => void } }) {
-    server.middlewares.use((_req, res, next) => {
-      for (const [key, value] of Object.entries(securityHeaders)) {
+  configurePreviewServer(server: { middlewares: { use: (fn: (req: { url?: string }, res: { setHeader: (key: string, value: string) => void }, next: () => void) => void) => void } }) {
+    server.middlewares.use((req, res, next) => {
+      const pathname = req.url ? new URL(req.url, 'http://shieldcv.local').pathname : '/';
+
+      for (const [key, value] of Object.entries(getSecurityHeaders(pathname))) {
         res.setHeader(key, value);
       }
 
@@ -43,6 +36,18 @@ const shieldcvSecurityHeaders = {
 };
 
 export default defineConfig({
+  build: {
+    chunkSizeWarningLimit: 700,
+    rollupOptions: {
+      output: {
+        manualChunks(id) {
+          if (id.includes('pdfjs-dist')) {
+            return 'pdfjs-worker';
+          }
+        },
+      },
+    },
+  },
   resolve: {
     alias: {
       $docs: docsRoot,
@@ -60,6 +65,16 @@ export default defineConfig({
       workbox: {
         cleanupOutdatedCaches: true,
         globPatterns: ['**/*.{js,css,html,svg,png,webmanifest,woff2}'],
+        // pdf.js is route-isolated to /pdf-worker and should be fetched only when that sandbox loads.
+        globIgnores: ['**/_app/immutable/chunks/pdfjs-worker*.js'],
+        manifestTransforms: [
+          (entries) => ({
+            manifest: entries.filter(
+              (entry) => !(entry.url.startsWith('_app/immutable/chunks/') && entry.size > 400 * 1024)
+            ),
+            warnings: [],
+          }),
+        ],
         runtimeCaching: [
           {
             urlPattern: ({ url }) => url.pathname.startsWith('/api/'),
@@ -89,10 +104,10 @@ export default defineConfig({
     }),
   ],
   preview: {
-    headers: securityHeaders,
+    headers: getSecurityHeaders('/'),
   },
   server: {
-    headers: securityHeaders,
+    headers: getSecurityHeaders('/'),
   },
   test: {
     environment: 'jsdom',

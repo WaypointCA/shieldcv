@@ -21,7 +21,7 @@
   };
 
   const navItems: NavItem[] = [
-    { href: '/', label: 'Resumes', icon: FileText },
+    { href: '/resumes', label: 'Resumes', icon: FileText },
     { href: '/scan', label: 'Scan', icon: ScanSearch },
     { href: '/audit', label: 'Audit', icon: Radar },
     { href: '/settings', label: 'Settings', icon: Settings },
@@ -31,11 +31,13 @@
   let showInstall = false;
 
   function isActive(href: string) {
-    return page.url.pathname === href;
+    return href === '/resumes'
+      ? page.url.pathname === '/resumes' || page.url.pathname.startsWith('/resumes/')
+      : page.url.pathname === href;
   }
 
   function currentTitle() {
-    const item = navItems.find(({ href }) => page.url.pathname === href);
+    const item = navItems.find(({ href }) => isActive(href));
     return item?.label ?? 'ShieldCV';
   }
 
@@ -59,6 +61,9 @@
 
 <svelte:window on:beforeinstallprompt={handleInstallPrompt} />
 
+{#if page.url.pathname.startsWith('/pdf-worker')}
+  <slot />
+{:else}
 <div class="app-shell">
   <aside class="shell-nav" aria-label="Primary navigation">
     <div class="shell-brand">
@@ -135,3 +140,4 @@
     </a>
   {/each}
 </nav>
+{/if}

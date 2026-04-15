@@ -16,12 +16,14 @@
     "@shieldcv/audit": "workspace:*",
     "@shieldcv/compliance": "workspace:*",
     "@shieldcv/crypto": "workspace:*",
+    "@shieldcv/resume": "workspace:*",
     "@shieldcv/storage": "workspace:*",
     "@sveltejs/adapter-cloudflare": "7.2.8",
     "@sveltejs/kit": "2.57.1",
     "dompurify": "^3.3.3",
     "lucide-svelte": "^1.0.1",
     "mdsvex": "^0.12.7",
+    "pdfjs-dist": "^5.6.205",
     "svelte": "5.55.3"
   },
   "devDependencies": {

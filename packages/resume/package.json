@@ -1,0 +1,24 @@
+{
+  "name": "@shieldcv/resume",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "default": "./src/index.ts"
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "lint": "eslint src --ext .ts",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "test": "vitest run --coverage.enabled --coverage.provider=v8 --coverage.reporter=text --coverage.include=src/index.ts --coverage.thresholds.lines=100 --coverage.thresholds.functions=100 --coverage.thresholds.branches=100 --coverage.thresholds.statements=100"
+  },
+  "devDependencies": {
+    "vitest": "^3.1.1"
+  },
+  "dependencies": {
+    "zod": "^4.3.6"
+  }
+}

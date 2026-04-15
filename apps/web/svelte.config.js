@@ -38,6 +38,7 @@ const config = {
     alias: {
       $crypto: '../../packages/crypto/src',
       $storage: '../../packages/storage/src',
+      $resume: '../../packages/resume/src',
       $ai: '../../packages/ai/src',
       $compliance: '../../packages/compliance/src',
       $audit: '../../packages/audit/src',
