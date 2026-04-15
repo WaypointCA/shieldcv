@@ -16,6 +16,33 @@ const MAIN_APP_HEADERS = {
 
 const SVELTEKIT_ROOT_STYLE_HASH = "'sha256-tcbDxjMo+xKqM21aCGYbs/QAJqB7yUXC06oPWDapBgc='";
 
+function aiScanContentSecurityPolicy(nonce?: string): string {
+  const nonceSource = nonce ? ` 'nonce-${nonce}'` : '';
+
+  return [
+    "default-src 'self'",
+    `script-src 'self'${nonceSource} 'strict-dynamic' 'wasm-unsafe-eval'`,
+    "style-src 'self' 'unsafe-inline'",
+    "img-src 'self' data: blob:",
+    // The AI package performs all inference on-device. These external connect
+    // exceptions are only for first-load quantized model downloads from Hugging
+    // Face and its Xet file bridge; browser HTTP cache serves later visits.
+    "connect-src 'self' blob: https://huggingface.co https://cas-bridge.xethub.hf.co",
+    "worker-src 'self' blob:",
+    "child-src 'self' blob:",
+    "frame-src 'self' blob:",
+    "font-src 'self' data:",
+    "object-src 'none'",
+    "base-uri 'self'",
+    "form-action 'self'",
+    "frame-ancestors 'none'",
+    "manifest-src 'self'",
+    'upgrade-insecure-requests',
+    "require-trusted-types-for 'script'",
+    "trusted-types default dompurify svelte svelte-trusted-html",
+  ].join('; ');
+}
+
 function pdfWorkerContentSecurityPolicy(nonce?: string): string {
   const nonceSource = nonce ? ` 'nonce-${nonce}'` : '';
 
@@ -47,6 +74,13 @@ export function getSecurityHeaders(pathname: string, options: { nonce?: string }
     return {
       ...PDF_WORKER_HEADERS,
       'Content-Security-Policy': pdfWorkerContentSecurityPolicy(options.nonce),
+    };
+  }
+
+  if (pathname.startsWith('/scan')) {
+    return {
+      ...MAIN_APP_HEADERS,
+      'Content-Security-Policy': aiScanContentSecurityPolicy(options.nonce),
     };
   }
 

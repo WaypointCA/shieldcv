@@ -7,6 +7,7 @@ import { VitePWA } from 'vite-plugin-pwa';
 import { getSecurityHeaders } from './src/lib/security';
 
 const projectRoot = path.dirname(fileURLToPath(import.meta.url));
+const workspaceRoot = path.resolve(projectRoot, '../..');
 const docsRoot = path.resolve(projectRoot, '../../docs');
 
 const shieldcvSecurityHeaders = {
@@ -44,6 +45,10 @@ export default defineConfig({
           if (id.includes('pdfjs-dist')) {
             return 'pdfjs-worker';
           }
+
+          if (id.includes('@huggingface/transformers') || id.includes('onnxruntime-web')) {
+            return 'transformers-ai';
+          }
         },
       },
     },
@@ -65,8 +70,16 @@ export default defineConfig({
       workbox: {
         cleanupOutdatedCaches: true,
         globPatterns: ['**/*.{js,css,html,svg,png,webmanifest,woff2}'],
-        // pdf.js is route-isolated to /pdf-worker and should be fetched only when that sandbox loads.
-        globIgnores: ['**/_app/immutable/chunks/pdfjs-worker*.js'],
+        // pdf.js and Transformers.js are route-isolated and should be fetched
+        // only when their sandbox/AI routes load, not during service-worker install.
+        globIgnores: [
+          '**/_app/immutable/chunks/pdfjs-worker*.js',
+          '**/_app/immutable/chunks/transformers-ai*.js',
+          '**/_app/immutable/workers/**',
+          '**/*transformers*.js',
+          '**/*ort*.wasm',
+          '**/models/**',
+        ],
         manifestTransforms: [
           (entries) => ({
             manifest: entries.filter(
@@ -107,6 +120,9 @@ export default defineConfig({
     headers: getSecurityHeaders('/'),
   },
   server: {
+    fs: {
+      allow: [workspaceRoot],
+    },
     headers: getSecurityHeaders('/'),
   },
   test: {

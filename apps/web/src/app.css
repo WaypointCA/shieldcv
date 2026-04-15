@@ -542,6 +542,87 @@ button {
   background: color-mix(in srgb, var(--accent) 8%, var(--bg-muted));
 }
 
+.scan-panel,
+.scan-results,
+.scan-results-empty {
+  display: grid;
+  gap: 1rem;
+  max-width: 72rem;
+}
+
+.scan-status {
+  display: inline-flex;
+  align-items: center;
+  min-height: 2rem;
+  padding: 0.35rem 0.7rem;
+  border: 1px solid color-mix(in srgb, var(--success) 36%, transparent);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--success) 14%, transparent);
+  color: var(--success);
+  font-size: 0.88rem;
+  font-weight: 700;
+}
+
+.scan-progress {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.scan-progress__copy {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 0.75rem;
+  color: var(--text-soft);
+}
+
+.scan-progress progress {
+  width: 100%;
+  height: 0.75rem;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--bg-muted);
+}
+
+.scan-progress progress::-webkit-progress-bar {
+  background: var(--bg-muted);
+}
+
+.scan-progress progress::-webkit-progress-value,
+.scan-progress progress::-moz-progress-bar {
+  background: linear-gradient(90deg, var(--accent), var(--success));
+}
+
+.scan-textarea {
+  min-height: 14rem;
+}
+
+.scan-table-wrap {
+  overflow-x: auto;
+}
+
+.scan-table {
+  width: 100%;
+  min-width: 34rem;
+  border-collapse: collapse;
+}
+
+.scan-table th,
+.scan-table td {
+  padding: 0.85rem;
+  border-bottom: 1px solid var(--border);
+  color: var(--text-soft);
+  text-align: left;
+}
+
+.scan-table th {
+  color: var(--text);
+  font-size: 0.78rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
 .dropzone p {
   margin: 0;
 }
