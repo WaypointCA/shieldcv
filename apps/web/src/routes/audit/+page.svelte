@@ -17,6 +17,7 @@
     type AuditEvent,
     type ChainVerification,
   } from '@shieldcv/audit';
+  import { bindAttackModeAuditIfAvailable } from '$lib/demo-audit';
   import VaultUnlockPanel from '$lib/components/VaultUnlockPanel.svelte';
   import { isVaultUnlocked, unlockVault } from '$lib/resume-vault';
 
@@ -40,6 +41,7 @@
   let verifyBusy = false;
   let exportBusy = false;
   let unlocked = false;
+  let usingAttackModeAudit = false;
   let error = '';
   let expandedEntries = new Set<number>();
   let newestFirstEntries: AuditEntry[] = [];
@@ -184,8 +186,15 @@
 
     if (unlocked) {
       await loadAudit();
+      usingAttackModeAudit = false;
     } else {
-      loading = false;
+      usingAttackModeAudit = await bindAttackModeAuditIfAvailable();
+
+      if (usingAttackModeAudit) {
+        await loadAudit();
+      } else {
+        loading = false;
+      }
     }
   });
 
@@ -196,7 +205,7 @@
   <title>Audit Log | ShieldCV</title>
 </svelte:head>
 
-{#if !unlocked}
+{#if !unlocked && !usingAttackModeAudit}
   <VaultUnlockPanel
     busy={unlockBusy}
     copy="Unlock your on-device vault to inspect the tamper-evident audit chain and export it as evidence."
@@ -208,7 +217,7 @@
   <section class="content-card audit-header">
     <div class="section-header">
       <div>
-        <p class="section-kicker">Security Evidence</p>
+        <p class="section-kicker">{usingAttackModeAudit ? 'Attack Mode Evidence' : 'Security Evidence'}</p>
         <h3>Audit Log</h3>
       </div>
 
@@ -231,6 +240,9 @@
       <span class:danger-badge={!verification.valid} class:success-badge={verification.valid} class="audit-badge">
         {#if verification.valid}Chain intact{:else}TAMPERING DETECTED{/if}
       </span>
+      {#if usingAttackModeAudit}
+        <p>This view is showing the self-contained Attack Mode demo chain from the current browser session.</p>
+      {/if}
       <p>{verificationSummary(verification)}</p>
       <div class="audit-metadata">
         <span><strong>{verification.entryCount}</strong> entries</span>

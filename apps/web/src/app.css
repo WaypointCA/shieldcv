@@ -275,6 +275,17 @@ button {
   border-color: color-mix(in srgb, var(--accent) 24%, transparent);
 }
 
+.nav-link--danger,
+.tabbar-link--danger {
+  color: color-mix(in srgb, var(--danger) 78%, var(--text-soft));
+}
+
+.nav-link--danger.active,
+.tabbar-link--danger.active {
+  background: color-mix(in srgb, var(--danger) 16%, transparent);
+  border-color: color-mix(in srgb, var(--danger) 30%, transparent);
+}
+
 .shell-actions {
   display: grid;
   gap: 0.75rem;
@@ -314,7 +325,7 @@ button {
   inset: auto 0 0;
   z-index: 30;
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: 0.5rem;
   padding:
     0.75rem 0.75rem

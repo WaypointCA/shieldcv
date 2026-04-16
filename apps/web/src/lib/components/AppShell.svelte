@@ -4,6 +4,7 @@
     Radar,
     ScanSearch,
     Settings,
+    ShieldAlert,
     ShieldCheck,
   } from 'lucide-svelte';
   import { page } from '$app/state';
@@ -18,6 +19,7 @@
     href: string;
     label: string;
     icon: typeof FileText;
+    tone?: 'danger';
   };
 
   const navItems: NavItem[] = [
@@ -25,6 +27,7 @@
     { href: '/scan', label: 'Scan', icon: ScanSearch },
     { href: '/audit', label: 'Audit', icon: Radar },
     { href: '/settings', label: 'Settings', icon: Settings },
+    { href: '/attack-mode', label: 'Attack Mode', icon: ShieldAlert, tone: 'danger' },
   ];
 
   let deferredPrompt: BeforeInstallPromptEvent | null = null;
@@ -80,6 +83,7 @@
       {#each navItems as item}
         <a
           class:active={isActive(item.href)}
+          class:nav-link--danger={item.tone === 'danger'}
           class="nav-link"
           href={item.href}
           aria-current={isActive(item.href) ? 'page' : undefined}
@@ -131,6 +135,7 @@
   {#each navItems as item}
     <a
       class:active={isActive(item.href)}
+      class:tabbar-link--danger={item.tone === 'danger'}
       class="tabbar-link"
       href={item.href}
       aria-current={isActive(item.href) ? 'page' : undefined}

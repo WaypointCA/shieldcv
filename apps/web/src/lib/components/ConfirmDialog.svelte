@@ -4,16 +4,22 @@
   let {
     title,
     body,
+    kicker = 'Confirm action',
     destructiveLabel = 'Delete',
     cancelLabel = 'Cancel',
+    confirmTestId = 'confirm-delete',
     busy = false,
+    onCancel,
     onConfirm,
   }: {
     title: string;
     body: string;
+    kicker?: string;
     destructiveLabel?: string;
     cancelLabel?: string;
+    confirmTestId?: string;
     busy?: boolean;
+    onCancel?: () => void;
     onConfirm: () => Promise<void> | void;
   } = $props();
 
@@ -28,9 +34,12 @@
     cancelButton?.focus();
   }
 
-  function closeModal() {
+  function closeModal(notifyCancel = true) {
     dialogElement?.close();
     open = false;
+    if (notifyCancel) {
+      onCancel?.();
+    }
   }
 
   function handleDialogCancel(event: Event) {
@@ -48,9 +57,13 @@
     open = false;
   }
 
+  function handleCancelClick() {
+    closeModal();
+  }
+
   async function confirm() {
     await onConfirm();
-    closeModal();
+    closeModal(false);
   }
 </script>
 
@@ -66,7 +79,7 @@
   {#if open}
     <div class="dialog-header">
       <div>
-        <p class="section-kicker">Confirm action</p>
+        <p class="section-kicker">{kicker}</p>
         <h4 id="confirm-dialog-title">{title}</h4>
       </div>
 
@@ -74,7 +87,7 @@
         class="dialog-close"
         type="button"
         aria-label="Close confirmation dialog"
-        onclick={closeModal}
+        onclick={handleCancelClick}
       >
         ×
       </button>
@@ -85,12 +98,12 @@
     </div>
 
     <div class="dialog-actions">
-      <button bind:this={cancelButton} class="shell-button" type="button" onclick={closeModal}>
+      <button bind:this={cancelButton} class="shell-button" type="button" onclick={handleCancelClick}>
         {cancelLabel}
       </button>
       <button
         class="shell-button shell-button--danger"
-        data-testid="confirm-delete"
+        data-testid={confirmTestId}
         disabled={busy}
         type="button"
         onclick={confirm}

@@ -21,27 +21,33 @@
     return rejectAssignment('script URL');
   };
 
-  try {
-    window.trustedTypes.createPolicy('default', {
-      createHTML: () => rejectAssignment('HTML'),
-      createScript: () => rejectAssignment('script'),
-      createScriptURL,
-    });
-  } catch {
-    // The policy may already exist after a reload or prerendered transition.
+  if (!window.__shieldcvDefaultTrustedTypesPolicyCreated) {
+    try {
+      window.trustedTypes.createPolicy('default', {
+        createHTML: () => rejectAssignment('HTML'),
+        createScript: () => rejectAssignment('script'),
+        createScriptURL,
+      });
+      window.__shieldcvDefaultTrustedTypesPolicyCreated = true;
+    } catch {
+      // The policy may already exist after a reload or prerendered transition.
+    }
   }
 
-  try {
-    window.trustedTypes.createPolicy('dompurify', {
-      createHTML: (input) => {
-        if (!window.DOMPurify?.sanitize) {
-          throw new TypeError('DOMPurify is unavailable for Trusted Types sanitization.');
-        }
+  if (!window.__shieldcvDomPurifyPolicyCreated) {
+    try {
+      window.trustedTypes.createPolicy('dompurify', {
+        createHTML: (input) => {
+          if (!window.DOMPurify?.sanitize) {
+            throw new TypeError('DOMPurify is unavailable for Trusted Types sanitization.');
+          }
 
-        return window.DOMPurify.sanitize(input, { RETURN_TRUSTED_TYPE: false });
-      },
-    });
-  } catch {
-    // Ignore duplicate policy creation and keep the first registered policy.
+          return window.DOMPurify.sanitize(input, { RETURN_TRUSTED_TYPE: false });
+        },
+      });
+      window.__shieldcvDomPurifyPolicyCreated = true;
+    } catch {
+      // Ignore duplicate policy creation and keep the first registered policy.
+    }
   }
 })();

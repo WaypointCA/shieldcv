@@ -110,6 +110,21 @@
   </div>
 </section>
 
+<section class="posture-action">
+  <div>
+    <p class="section-kicker">Live demo</p>
+    <h4>See our defenses in action</h4>
+    <p>
+      Launch Attack Mode to watch malicious resume payloads get blocked by Trusted Types,
+      DOMPurify, CSP, and size guards in real time.
+    </p>
+  </div>
+
+  <a class="shell-button shell-button--danger posture-action__link" href="/attack-mode">
+    Open Attack Mode
+  </a>
+</section>
+
 <dialog
   bind:this={dialogElement}
   id="posture-dialog"
@@ -150,3 +165,42 @@
     </div>
   {/if}
 </dialog>
+
+<style>
+  .posture-action {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-top: 1rem;
+    padding: 1.25rem;
+    border: 1px solid color-mix(in srgb, var(--danger) 26%, var(--border));
+    border-radius: 1.5rem;
+    background:
+      radial-gradient(circle at top right, color-mix(in srgb, var(--danger) 18%, transparent), transparent 42%),
+      color-mix(in srgb, var(--surface) 92%, transparent);
+    box-shadow: var(--shadow);
+  }
+
+  .posture-action h4 {
+    margin: 0 0 0.45rem;
+    font-size: 1.15rem;
+  }
+
+  .posture-action p {
+    margin: 0;
+    color: var(--text-soft);
+  }
+
+  .posture-action__link {
+    flex: none;
+    text-decoration: none;
+  }
+
+  @media (max-width: 720px) {
+    .posture-action {
+      flex-direction: column;
+      align-items: stretch;
+    }
+  }
+</style>
