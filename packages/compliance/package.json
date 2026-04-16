@@ -13,7 +13,7 @@
     "build": "tsc -p tsconfig.json",
     "lint": "eslint src --ext .ts",
     "typecheck": "tsc --noEmit -p tsconfig.json",
-    "test": "vitest run --coverage.enabled --coverage.provider=v8 --coverage.reporter=text --coverage.include=src/hipaa.ts --coverage.thresholds.lines=100 --coverage.thresholds.functions=100 --coverage.thresholds.branches=100 --coverage.thresholds.statements=100"
+    "test": "vitest run --coverage.enabled --coverage.provider=v8 --coverage.reporter=text --coverage.include=src/hipaa.ts --coverage.include=src/cmmc.ts --coverage.include=src/gdpr.ts --coverage.thresholds.lines=100 --coverage.thresholds.functions=100 --coverage.thresholds.branches=100 --coverage.thresholds.statements=100"
   },
   "dependencies": {
     "@shieldcv/ai": "workspace:*",

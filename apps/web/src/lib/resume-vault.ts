@@ -1,10 +1,12 @@
 import { appendEntry, getEntries, initAudit, type AuditEvent } from '@shieldcv/audit';
+import type { ApplicationRecord } from '@shieldcv/compliance';
 import { createBlankResume, normalizeResumeDocument, type ResumeDocument } from '@shieldcv/resume';
 import { EncryptedStore } from '@shieldcv/storage';
 import { writable } from 'svelte/store';
 
 const DATABASE_NAME = 'shieldcv-local-vault';
 const RESUME_NAMESPACE = 'resume';
+const GDPR_APPLICATION_NAMESPACE = 'gdpr-applications';
 export const MAX_RESUME_SIZE = 500_000;
 
 type VaultStatus = 'locked' | 'unlocking' | 'unlocked';
@@ -144,4 +146,27 @@ export async function deleteResume(id: string): Promise<void> {
   const store = await resumeStore();
   await store.delete(RESUME_NAMESPACE, id);
   fireAndForgetAudit('resume_deleted', `Deleted resume ${id}`);
+}
+
+export async function listGdprApplications(): Promise<ApplicationRecord[]> {
+  const store = await resumeStore();
+  const ids = await store.list(GDPR_APPLICATION_NAMESPACE);
+  const records = await Promise.all(
+    ids.map((id) => store.get<ApplicationRecord>(GDPR_APPLICATION_NAMESPACE, id)),
+  );
+
+  return records
+    .filter((record): record is ApplicationRecord => record !== undefined)
+    .sort((left, right) => right.dateApplied.localeCompare(left.dateApplied));
+}
+
+export async function saveGdprApplication(record: ApplicationRecord): Promise<ApplicationRecord> {
+  const store = await resumeStore();
+  await store.put(GDPR_APPLICATION_NAMESPACE, record.id, record);
+  return record;
+}
+
+export async function deleteGdprApplication(id: string): Promise<void> {
+  const store = await resumeStore();
+  await store.delete(GDPR_APPLICATION_NAMESPACE, id);
 }
