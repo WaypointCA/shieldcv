@@ -1,3 +1,2 @@
-export function placeholderCompliance(): string {
-  return '@shieldcv/compliance placeholder';
-}
+export * from './fixtures/problematic-resume';
+export * from './hipaa';
