@@ -24,10 +24,9 @@ function aiScanContentSecurityPolicy(nonce?: string): string {
     `script-src 'self'${nonceSource} 'strict-dynamic' 'wasm-unsafe-eval'`,
     "style-src 'self' 'unsafe-inline'",
     "img-src 'self' data: blob:",
-    // The AI package performs all inference on-device. These external connect
-    // exceptions are only for first-load quantized model downloads from Hugging
-    // Face and its Xet file bridge; browser HTTP cache serves later visits.
-    "connect-src 'self' blob: https://huggingface.co https://cas-bridge.xethub.hf.co",
+    // The AI package performs all inference on-device with same-origin model
+    // files served from /models/, so /scan needs no external connections.
+    "connect-src 'self' blob:",
     "worker-src 'self' blob:",
     "child-src 'self' blob:",
     "frame-src 'self' blob:",

@@ -40,6 +40,10 @@ type NavigatorWithWebGpu = Navigator & {
 const NER_MODEL = 'Xenova/bert-base-NER';
 const EMBEDDING_MODEL = 'Xenova/all-MiniLM-L6-v2';
 
+env.allowLocalModels = true;
+env.allowRemoteModels = false;
+env.localModelPath = '/models/';
+
 const onnxBackend = env.backends.onnx as { wasm?: { wasmPaths?: { wasm: string; mjs: string } } };
 onnxBackend.wasm ??= {};
 onnxBackend.wasm.wasmPaths = {

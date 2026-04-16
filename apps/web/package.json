@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite dev",
+    "prebuild": "node ../../scripts/fetch-models.mjs",
     "build": "vite build",
     "preview": "vite preview",
     "lint": "eslint . --ext .js,.ts,.svelte",

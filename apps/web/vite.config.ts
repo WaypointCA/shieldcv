@@ -79,6 +79,7 @@ export default defineConfig({
           '**/*transformers*.js',
           '**/*ort*.wasm',
           '**/models/**',
+          'models/**/*',
         ],
         manifestTransforms: [
           (entries) => ({
