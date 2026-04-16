@@ -2,6 +2,7 @@
   import { goto } from '$app/navigation';
   import { page } from '$app/state';
   import { onMount } from 'svelte';
+  import { appendEntry } from '@shieldcv/audit';
   import {
     createBlankResume,
     normalizeResumeDocument,
@@ -41,6 +42,8 @@
   let frame = $state<HTMLIFrameElement | null>(null);
   let fileInput = $state<HTMLInputElement | null>(null);
   let deleteDialog = $state<ConfirmDialogHandle | null>(null);
+  let lastResumeAuditAt = $state(0);
+  let importingFileName = $state('');
 
   function createWork(): ResumeWork {
     return {
@@ -174,6 +177,29 @@
     return `${minutes}m ago`;
   }
 
+  function auditWarn(context: string, auditError: unknown) {
+    console.warn(`Audit log write failed after ${context}.`, auditError);
+  }
+
+  function logResumeUpdatedIfDue(): void {
+    const now = Date.now();
+
+    if (now - lastResumeAuditAt < 30_000) {
+      return;
+    }
+
+    lastResumeAuditAt = now;
+    void appendEntry('resume_updated', `Updated resume ${resume.id}`).catch((auditError) => {
+      auditWarn('resume autosave', auditError);
+    });
+  }
+
+  function logPdfImport(details: string): void {
+    void appendEntry('resume_imported_pdf', details).catch((auditError) => {
+      auditWarn('PDF import', auditError);
+    });
+  }
+
   async function persistResume() {
     if (!dirty || saving) {
       return;
@@ -196,6 +222,7 @@
       resume = savedResume;
       markResumeClean(savedResume);
       saveStatus = 'saved';
+      logResumeUpdatedIfDue();
     } catch (saveFailure) {
       saveStatus = 'failed';
       saveError = saveFailure instanceof Error ? saveFailure.message : 'Unable to save this resume.';
@@ -281,6 +308,7 @@
 
     pendingPdfFile = null;
     importBusy = true;
+    importingFileName = file.name;
     importMessage = `Parsing ${file.name} inside the sandboxed iframe…`;
 
     const buffer = await file.arrayBuffer();
@@ -293,6 +321,8 @@
         scheduleAutosave();
         importBusy = false;
         importMessage = 'Imported text from 1 page. Review the fields, then save.';
+        logPdfImport(`Imported PDF ${importingFileName || file.name} into resume ${resume.id} (1 page).`);
+        importingFileName = '';
       }
     }, 1_500);
   }
@@ -330,16 +360,29 @@
     }
 
     if (data.type === 'pdf-text-result' && typeof data.text === 'string') {
+      if (!importBusy) {
+        return;
+      }
+
       resume = parsePdfTextToResume(data.text, resume);
       scheduleAutosave();
       importBusy = false;
       importMessage = `Imported text from ${data.pages ?? 0} page${data.pages === 1 ? '' : 's'}. Review the fields, then save.`;
+      logPdfImport(
+        `Imported PDF ${importingFileName || 'unknown.pdf'} into resume ${resume.id} (${data.pages ?? 0} page${data.pages === 1 ? '' : 's'}).`
+      );
+      importingFileName = '';
       return;
     }
 
     if (data.type === 'pdf-text-error') {
+      if (!importBusy) {
+        return;
+      }
+
       importBusy = false;
       importMessage = data.error ?? 'Unable to import this PDF.';
+      importingFileName = '';
     }
   }
 

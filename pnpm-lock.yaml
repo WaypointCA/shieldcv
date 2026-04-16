@@ -139,7 +139,18 @@ importers:
         specifier: ^3.1.1
         version: 3.2.4(@types/node@25.6.0)(jiti@2.6.1)(jsdom@26.1.0)(lightningcss@1.32.0)(terser@5.46.1)
 
-  packages/audit: {}
+  packages/audit:
+    dependencies:
+      '@shieldcv/crypto':
+        specifier: workspace:*
+        version: link:../crypto
+      '@shieldcv/storage':
+        specifier: workspace:*
+        version: link:../storage
+    devDependencies:
+      vitest:
+        specifier: ^3.1.1
+        version: 3.2.4(@types/node@25.6.0)(jiti@2.6.1)(jsdom@26.1.0)(lightningcss@1.32.0)(terser@5.46.1)
 
   packages/compliance:
     dependencies:

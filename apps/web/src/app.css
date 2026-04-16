@@ -680,6 +680,172 @@ button {
   background: #fff;
 }
 
+.audit-header,
+.audit-entry {
+  position: relative;
+  overflow: hidden;
+}
+
+.audit-summary {
+  display: grid;
+  gap: 0.85rem;
+}
+
+.audit-badge {
+  display: inline-flex;
+  align-items: center;
+  width: fit-content;
+  padding: 0.45rem 0.8rem;
+  border-radius: 999px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.audit-badge.success-badge {
+  color: var(--success);
+  background: color-mix(in srgb, var(--success) 16%, transparent);
+  border: 1px solid color-mix(in srgb, var(--success) 32%, transparent);
+}
+
+.audit-badge.danger-badge {
+  color: var(--danger);
+  background: color-mix(in srgb, var(--danger) 16%, transparent);
+  border: 1px solid color-mix(in srgb, var(--danger) 32%, transparent);
+}
+
+.audit-metadata {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem 1rem;
+  color: var(--text-muted);
+  font-size: 0.92rem;
+}
+
+.audit-list {
+  display: grid;
+  gap: 0.9rem;
+}
+
+.audit-entry {
+  display: grid;
+  gap: 0.8rem;
+}
+
+.audit-entry__topline,
+.audit-entry__main,
+.audit-hash-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.audit-index,
+.audit-hash-row code,
+.audit-expanded code {
+  font-family:
+    'SFMono-Regular',
+    'SF Mono',
+    'IBM Plex Mono',
+    ui-monospace,
+    monospace;
+}
+
+.audit-index {
+  color: var(--text-muted);
+  font-size: 0.92rem;
+}
+
+.audit-expand {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--accent);
+  font: inherit;
+}
+
+.audit-event {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+  padding: 0.45rem 0.75rem;
+  border-radius: 999px;
+  border: 1px solid transparent;
+  font-size: 0.82rem;
+  font-weight: 700;
+  text-transform: capitalize;
+}
+
+.audit-event--vault {
+  color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+  border-color: color-mix(in srgb, var(--accent) 28%, transparent);
+}
+
+.audit-event--resume {
+  color: var(--success);
+  background: color-mix(in srgb, var(--success) 12%, transparent);
+  border-color: color-mix(in srgb, var(--success) 28%, transparent);
+}
+
+.audit-event--scan {
+  color: var(--warning);
+  background: color-mix(in srgb, var(--warning) 12%, transparent);
+  border-color: color-mix(in srgb, var(--warning) 28%, transparent);
+}
+
+.audit-event--attack {
+  color: var(--danger);
+  background: color-mix(in srgb, var(--danger) 12%, transparent);
+  border-color: color-mix(in srgb, var(--danger) 28%, transparent);
+}
+
+.audit-event--export {
+  color: var(--text-muted);
+  background: color-mix(in srgb, var(--text-muted) 10%, transparent);
+  border-color: color-mix(in srgb, var(--text-muted) 18%, transparent);
+}
+
+.audit-timestamp {
+  color: var(--text-muted);
+  font-size: 0.9rem;
+}
+
+.audit-details {
+  margin: 0;
+  color: var(--text);
+  display: none;
+}
+
+.audit-hash-row {
+  color: var(--text-muted);
+  font-size: 0.86rem;
+}
+
+.audit-hash-label {
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+}
+
+.audit-expanded {
+  display: none;
+  gap: 0.5rem;
+  padding-top: 0.2rem;
+  border-top: 1px solid var(--border);
+}
+
+.audit-expanded.expanded {
+  display: grid;
+}
+
+.audit-expanded__line {
+  margin: 0;
+  display: grid;
+  gap: 0.25rem;
+}
+
 @media (min-width: 48rem) {
   .app-shell {
     display: grid;
@@ -723,6 +889,22 @@ button {
 
   .form-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .audit-entry {
+    gap: 1rem;
+  }
+
+  .audit-details {
+    display: block;
+  }
+
+  .audit-expand {
+    display: none;
+  }
+
+  .audit-expanded {
+    display: grid;
   }
 
   .tabbar {

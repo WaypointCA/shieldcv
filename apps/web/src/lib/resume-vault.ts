@@ -1,3 +1,4 @@
+import { appendEntry, getEntries, initAudit, type AuditEvent } from '@shieldcv/audit';
 import { createBlankResume, normalizeResumeDocument, type ResumeDocument } from '@shieldcv/resume';
 import { EncryptedStore } from '@shieldcv/storage';
 import { writable } from 'svelte/store';
@@ -6,6 +7,7 @@ const DATABASE_NAME = 'shieldcv-local-vault';
 const RESUME_NAMESPACE = 'resume';
 
 type VaultStatus = 'locked' | 'unlocking' | 'unlocked';
+type AuditStoreBinding = Pick<EncryptedStore, 'get' | 'put' | 'list' | 'delete'>;
 
 const vaultStatus = writable<VaultStatus>('locked');
 
@@ -28,14 +30,33 @@ function ensureUpdatedTimestamp(document: ResumeDocument): ResumeDocument {
 
 export { vaultStatus };
 
+function bindAuditStore(store: AuditStoreBinding | undefined): void {
+  globalThis.__shieldcvAuditStore = store;
+}
+
+function fireAndForgetAudit(event: AuditEvent, details: string): void {
+  void appendEntry(event, details).catch((error) => {
+    console.warn('Audit log write failed.', error);
+  });
+}
+
 export async function unlockVault(passphrase: string): Promise<void> {
   vaultStatus.set('unlocking');
 
   try {
     const store = await resumeStore();
     await store.unlock(passphrase);
+    bindAuditStore(store);
+    await initAudit();
+
+    if ((await getEntries()).length === 0) {
+      fireAndForgetAudit('vault_created', 'Created encrypted resume vault.');
+    }
+
+    fireAndForgetAudit('vault_unlocked', 'Unlocked encrypted resume vault.');
     vaultStatus.set('unlocked');
   } catch (error) {
+    bindAuditStore(undefined);
     vaultStatus.set('locked');
     throw error;
   }
@@ -43,7 +64,13 @@ export async function unlockVault(passphrase: string): Promise<void> {
 
 export async function lockVault(): Promise<void> {
   const store = await resumeStore();
+  try {
+    await appendEntry('vault_locked', 'Locked encrypted resume vault.');
+  } catch (error) {
+    console.warn('Audit log write failed.', error);
+  }
   store.lock();
+  bindAuditStore(undefined);
   vaultStatus.set('locked');
 }
 
@@ -80,10 +107,13 @@ export async function saveResume(document: ResumeDocument): Promise<ResumeDocume
 
 export async function createResume(): Promise<ResumeDocument> {
   const resume = createBlankResume(globalThis.crypto.randomUUID());
-  return saveResume(resume);
+  const savedResume = await saveResume(resume);
+  fireAndForgetAudit('resume_created', `Created resume ${savedResume.id}`);
+  return savedResume;
 }
 
 export async function deleteResume(id: string): Promise<void> {
   const store = await resumeStore();
   await store.delete(RESUME_NAMESPACE, id);
+  fireAndForgetAudit('resume_deleted', `Deleted resume ${id}`);
 }

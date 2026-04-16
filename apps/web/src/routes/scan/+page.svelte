@@ -1,5 +1,6 @@
 <script lang="ts">
   import { onMount } from 'svelte';
+  import { appendEntry } from '@shieldcv/audit';
   import {
     AlertTriangle,
     BookOpen,
@@ -56,6 +57,10 @@
   let fieldTextMap = new Map<string, string>();
   let groupedFindings: Array<{ field: string; items: Finding[] }> = [];
   let severityCounts = { high: 0, medium: 0, low: 0 };
+
+  function auditWarn(context: string, auditError: unknown) {
+    console.warn(`Audit log write failed after ${context}.`, auditError);
+  }
 
   function formatMegabytes(bytes: number): string {
     return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
@@ -295,6 +300,21 @@
       findings = nextFindings;
       scanSummary = compliance.summarizeScan(resume.id, nextFindings);
       scanProgressFields = scanTotalFields;
+      void appendEntry(
+        'scan_completed',
+        `Completed scan for resume ${scanSummary.resumeId} with ${scanSummary.findingsCount} finding${scanSummary.findingsCount === 1 ? '' : 's'}.`
+      ).catch((auditError) => {
+        auditWarn('scan completion', auditError);
+      });
+
+      if (scanSummary.findingsCount > 0) {
+        void appendEntry(
+          'scan_phi_detected',
+          `Found ${scanSummary.findingsCount} potential PHI items in resume ${scanSummary.resumeId}`
+        ).catch((auditError) => {
+          auditWarn('PHI detection', auditError);
+        });
+      }
     } catch (scanError) {
       error = scanError instanceof Error ? scanError.message : 'Unable to scan the resume for PHI.';
     } finally {
