@@ -1,0 +1,26 @@
+flowchart LR
+    U["User"]
+    B["Browser Tab\nResume builder, scans, GDPR tracker"]
+    IDB["Encrypted IndexedDB\nAES-GCM ciphertext only"]
+    WW["Web Worker\nLocal AI inference"]
+    PDF["Sandboxed Iframe\nPDF parsing via postMessage only"]
+    CF["Cloudflare Edge\nStatic assets + security headers only"]
+
+    U --> B
+    B --> IDB
+    B --> WW
+    B --> PDF
+    CF --> B
+
+    NET["Network Boundary\nNO DATA CROSSES HERE"]
+    U --- NET
+    NET --- CF
+    B -. "NO DATA CROSSES HERE" .- CF
+
+    classDef local fill:#e8f4ea,stroke:#2f6f44,color:#16351f;
+    classDef edge fill:#eef2ff,stroke:#4355b9,color:#1f2757;
+    classDef boundary fill:#fff4d6,stroke:#a06a00,color:#5b3b00;
+
+    class B,IDB,WW,PDF local;
+    class CF edge;
+    class NET boundary;
