@@ -1,5 +1,6 @@
 <script lang="ts">
   import { onMount } from 'svelte';
+  import { page } from '$app/state';
   import { appendEntry } from '@shieldcv/audit';
   import {
     AlertTriangle,
@@ -106,6 +107,7 @@
   let atsJobDescription = '';
   let atsAnalysis: AtsAnalysis | null = null;
   let atsScannedLabel = '';
+  let routePrefsApplied = false;
 
   function auditWarn(context: string, auditError: unknown) {
     console.warn(`Audit log write failed after ${context}.`, auditError);
@@ -697,8 +699,25 @@
     await runAtsAnalysis(compliance.problematicResume, 'Problematic demo resume', ATS_DEMO_JOB_DESCRIPTION);
   }
 
+  function applyRoutePreferences() {
+    const tab = page.url.searchParams.get('tab');
+    const modeParam = page.url.searchParams.get('mode');
+    const demoParam = page.url.searchParams.get('demo');
+
+    if (tab === 'hipaa' || tab === 'cmmc' || tab === 'gdpr' || tab === 'ats') {
+      activeTab = tab;
+    }
+
+    if (modeParam === 'demo' || demoParam === '1') {
+      mode = 'demo';
+      atsMode = 'demo';
+    }
+  }
+
   onMount(async () => {
     try {
+      applyRoutePreferences();
+      routePrefsApplied = true;
       await ensureModulesLoaded();
       unlocked = await isVaultUnlocked();
 
@@ -714,6 +733,10 @@
     }
   });
 
+  $: if (!routePrefsApplied || page.url.search) {
+    applyRoutePreferences();
+    routePrefsApplied = true;
+  }
   $: unlocked = $vaultStatus === 'unlocked';
   $: selectedResume = resumes.find((resume) => resume.id === selectedResumeId) ?? null;
   $: fieldTextMap = getFieldTextMap(scannedResume);
