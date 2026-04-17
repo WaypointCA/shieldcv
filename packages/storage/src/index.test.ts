@@ -40,6 +40,7 @@ describe('@shieldcv/storage', () => {
     const store = await EncryptedStore.open(dbName);
 
     expect(store.isUnlocked).toBe(false);
+    expect(store.databaseName).toBe(dbName);
 
     const rawDb = await openDB(dbName);
     const saltRecord = (await rawDb.get(META_STORE, 'salt')) as RawMetaRecord | undefined;
@@ -91,6 +92,16 @@ describe('@shieldcv/storage', () => {
     await store.unlock('correct passphrase');
 
     expect(store.isUnlocked).toBe(true);
+  });
+
+  it('hasSentinel() reports whether the vault has been initialized with a passphrase', async () => {
+    const store = await EncryptedStore.open(dbName);
+
+    await expect(EncryptedStore.hasSentinel(dbName)).resolves.toBe(false);
+
+    await store.unlock('sentinel passphrase');
+
+    await expect(EncryptedStore.hasSentinel(dbName)).resolves.toBe(true);
   });
 
   it('unlock() with the wrong passphrase throws a clear error', async () => {

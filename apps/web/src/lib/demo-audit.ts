@@ -1,9 +1,9 @@
 import { initAudit } from '@shieldcv/audit';
 import { EncryptedStore } from '@shieldcv/storage';
 
-const ATTACK_MODE_AUDIT_DATABASE_NAME = 'shieldcv-attack-mode-audit';
+export const ATTACK_MODE_AUDIT_DATABASE_NAME = 'shieldcv-attack-mode-audit';
 const ATTACK_MODE_AUDIT_PASSPHRASE = 'shieldcv-attack-mode-demo';
-const ATTACK_MODE_AUDIT_FLAG = 'shieldcv.attackModeAuditReady';
+export const ATTACK_MODE_AUDIT_FLAG = 'shieldcv.attackModeAuditReady';
 
 type AuditStoreBinding = Pick<EncryptedStore, 'get' | 'put' | 'list' | 'delete'>;
 

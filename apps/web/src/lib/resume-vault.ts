@@ -3,6 +3,7 @@ import type { ApplicationRecord } from '@shieldcv/compliance';
 import { createBlankResume, normalizeResumeDocument, type ResumeDocument } from '@shieldcv/resume';
 import { EncryptedStore } from '@shieldcv/storage';
 import { writable } from 'svelte/store';
+import { ATTACK_MODE_AUDIT_DATABASE_NAME, ATTACK_MODE_AUDIT_FLAG } from '$lib/demo-audit';
 
 const DATABASE_NAME = 'shieldcv-local-vault';
 const RESUME_NAMESPACE = 'resume';
@@ -110,6 +111,10 @@ export async function isVaultUnlocked(): Promise<boolean> {
   return unlocked;
 }
 
+export async function hasExistingVault(): Promise<boolean> {
+  return EncryptedStore.hasSentinel(DATABASE_NAME);
+}
+
 export async function listResumes(): Promise<ResumeDocument[]> {
   const store = await resumeStore();
   const ids = await store.list(RESUME_NAMESPACE);
@@ -169,4 +174,59 @@ export async function saveGdprApplication(record: ApplicationRecord): Promise<Ap
 export async function deleteGdprApplication(id: string): Promise<void> {
   const store = await resumeStore();
   await store.delete(GDPR_APPLICATION_NAMESPACE, id);
+}
+
+function clearBrowserStorage(): void {
+  if (typeof window === 'undefined') {
+    return;
+  }
+
+  window.localStorage.clear();
+  window.sessionStorage.clear();
+}
+
+async function closeVaultStore(): Promise<void> {
+  if (storePromise === null) {
+    return;
+  }
+
+  const existingStorePromise = storePromise;
+  storePromise = null;
+
+  try {
+    const store = await existingStorePromise;
+    store.close();
+  } catch (error) {
+    console.warn('Unable to close the existing vault database connection before reset.', error);
+  }
+}
+
+export async function destroyVault(): Promise<void> {
+  let unlocked = false;
+
+  try {
+    unlocked = await isVaultUnlocked();
+  } catch (error) {
+    console.warn('Unable to inspect vault state before reset.', error);
+  }
+
+  if (unlocked) {
+    try {
+      await appendEntry('vault_destroyed', 'Destroyed encrypted resume vault and cleared local data.');
+    } catch (error) {
+      console.warn('Audit log write failed before vault reset.', error);
+    }
+  }
+
+  bindAuditStore(undefined);
+  await closeVaultStore();
+  await EncryptedStore.destroy(DATABASE_NAME);
+  await EncryptedStore.destroy(ATTACK_MODE_AUDIT_DATABASE_NAME);
+  clearBrowserStorage();
+  vaultStatus.set('locked');
+  bindAuditStore(undefined);
+
+  if (typeof window !== 'undefined') {
+    window.localStorage.removeItem(ATTACK_MODE_AUDIT_FLAG);
+  }
 }

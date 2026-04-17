@@ -857,6 +857,49 @@ button {
   gap: 0.25rem;
 }
 
+:root:not([data-theme='light']) .shell-button--danger {
+  background: #be123c;
+  border-color: #e11d48;
+  color: #fff;
+}
+
+:root:not([data-theme='light']) .audit-badge.success-badge {
+  background: #047857;
+  border-color: #059669;
+  color: #f8fafc;
+}
+
+:root:not([data-theme='light']) .audit-badge.danger-badge {
+  background: #be123c;
+  border-color: #e11d48;
+  color: #fff1f2;
+}
+
+:root:not([data-theme='light']) .audit-event {
+  border-color: #334155;
+  color: #f8fafc;
+}
+
+:root:not([data-theme='light']) .audit-event--vault {
+  background: #1d4ed8;
+}
+
+:root:not([data-theme='light']) .audit-event--resume {
+  background: #047857;
+}
+
+:root:not([data-theme='light']) .audit-event--scan {
+  background: #b45309;
+}
+
+:root:not([data-theme='light']) .audit-event--attack {
+  background: #be123c;
+}
+
+:root:not([data-theme='light']) .audit-event--export {
+  background: #334155;
+}
+
 @media (min-width: 48rem) {
   .app-shell {
     display: grid;

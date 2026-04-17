@@ -94,7 +94,7 @@
     </div>
 
     <div class="dialog-body" id="confirm-dialog-body">
-      <p>{body}</p>
+      <p class="dialog-body__text">{body}</p>
     </div>
 
     <div class="dialog-actions">
@@ -113,3 +113,10 @@
     </div>
   {/if}
 </dialog>
+
+<style>
+  .dialog-body__text {
+    margin: 0;
+    white-space: pre-line;
+  }
+</style>

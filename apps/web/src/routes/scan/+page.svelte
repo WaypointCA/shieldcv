@@ -1801,6 +1801,94 @@
     justify-self: end;
   }
 
+  :global(:root:not([data-theme='light'])) .top-tabs__button,
+  :global(:root:not([data-theme='light'])) .mode-toggle__button,
+  :global(:root:not([data-theme='light'])) .field-input,
+  :global(:root:not([data-theme='light'])) .finding-card,
+  :global(:root:not([data-theme='light'])) .reference-item,
+  :global(:root:not([data-theme='light'])) .application-card,
+  :global(:root:not([data-theme='light'])) .pattern-chip {
+    background: #1e293b;
+    border-color: #334155;
+    color: #f8fafc;
+  }
+
+  :global(:root:not([data-theme='light'])) .top-tabs__button.active,
+  :global(:root:not([data-theme='light'])) .mode-toggle__button.active {
+    background: #2563eb;
+    border-color: #3b82f6;
+    color: #eff6ff;
+  }
+
+  :global(:root:not([data-theme='light'])) .scan-status,
+  :global(:root:not([data-theme='light'])) .gdpr-note {
+    background: #1d4ed8;
+    color: #eff6ff;
+  }
+
+  :global(:root:not([data-theme='light'])) .severity-pill--high,
+  :global(:root:not([data-theme='light'])) .deadline-pill--red {
+    background: #b91c1c;
+    color: #fff;
+  }
+
+  :global(:root:not([data-theme='light'])) .severity-pill--medium,
+  :global(:root:not([data-theme='light'])) .deadline-pill--yellow {
+    background: #b45309;
+    color: #fff;
+  }
+
+  :global(:root:not([data-theme='light'])) .severity-pill--low,
+  :global(:root:not([data-theme='light'])) .deadline-pill--green {
+    background: #15803d;
+    color: #fff;
+  }
+
+  :global(:root:not([data-theme='light'])) .deadline-pill--gray {
+    background: #475569;
+    color: #fff;
+  }
+
+  :global(:root:not([data-theme='light'])) .identifier-pill,
+  :global(:root:not([data-theme='light'])) .phi-group__count {
+    background: #0f172a;
+    border: 1px solid #334155;
+    color: #f8fafc;
+  }
+
+  :global(:root:not([data-theme='light'])) .suggestion-box {
+    background: #0f172a;
+    color: #e2e8f0;
+  }
+
+  :global(:root:not([data-theme='light'])) .empty-state__icon {
+    background: #14532d;
+    color: #dcfce7;
+  }
+
+  :global(:root:not([data-theme='light'])) .application-card__meta,
+  :global(:root:not([data-theme='light'])) .phi-copy-status {
+    color: #cbd5e1;
+  }
+
+  :global(:root:not([data-theme='light'])) .phi-copy-status {
+    color: #86efac;
+  }
+
+  :global(:root:not([data-theme='light'])) .field-error {
+    color: #fca5a5;
+  }
+
+  :global(:root:not([data-theme='light'])) .section-kicker {
+    color: #60a5fa;
+  }
+
+  :global(:root:not([data-theme='light'])) .ai-act-panel {
+    background:
+      radial-gradient(circle at top right, rgba(245, 158, 11, 0.18), transparent 35%),
+      #1e293b;
+  }
+
   @media (max-width: 960px) {
     .scan-shell {
       grid-template-columns: 1fr;

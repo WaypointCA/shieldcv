@@ -67,6 +67,23 @@ function zeroBytes(bytes: Uint8Array | null): void {
   }
 }
 
+function upgradeStorageDatabase(database: IDBPDatabase<StorageDatabase>): void {
+  if (!database.objectStoreNames.contains(META_STORE)) {
+    const metaStore = database.createObjectStore(META_STORE, { keyPath: 'key' });
+    metaStore.put({ key: META_SALT_KEY, value: generateSalt() });
+    metaStore.put({ key: META_VERSION_KEY, value: DATABASE_VERSION });
+  }
+
+  if (!database.objectStoreNames.contains(DATA_STORE)) {
+    const dataStore = database.createObjectStore(DATA_STORE, { keyPath: 'id' });
+    dataStore.createIndex('by-namespace', 'namespace');
+  }
+
+  if (!database.objectStoreNames.contains(AUDIT_STORE)) {
+    database.createObjectStore(AUDIT_STORE, { keyPath: 'id', autoIncrement: true });
+  }
+}
+
 /**
  * Encrypted IndexedDB wrapper for ShieldCV local storage.
  */
@@ -75,10 +92,12 @@ export class EncryptedStore {
   #salt: Uint8Array;
   #key: CryptoKey | null = null;
   #bestEffortWipe: Uint8Array | null = null;
+  #dbName: string;
 
-  private constructor(db: IDBPDatabase<StorageDatabase>, salt: Uint8Array) {
+  private constructor(db: IDBPDatabase<StorageDatabase>, salt: Uint8Array, dbName: string) {
     this.#db = db;
     this.#salt = salt;
+    this.#dbName = dbName;
   }
 
   /**
@@ -86,22 +105,7 @@ export class EncryptedStore {
    */
   static async open(dbName: string): Promise<EncryptedStore> {
     const db = await openDB<StorageDatabase>(dbName, DATABASE_VERSION, {
-      upgrade(database) {
-        if (!database.objectStoreNames.contains(META_STORE)) {
-          const metaStore = database.createObjectStore(META_STORE, { keyPath: 'key' });
-          metaStore.put({ key: META_SALT_KEY, value: generateSalt() });
-          metaStore.put({ key: META_VERSION_KEY, value: DATABASE_VERSION });
-        }
-
-        if (!database.objectStoreNames.contains(DATA_STORE)) {
-          const dataStore = database.createObjectStore(DATA_STORE, { keyPath: 'id' });
-          dataStore.createIndex('by-namespace', 'namespace');
-        }
-
-        if (!database.objectStoreNames.contains(AUDIT_STORE)) {
-          database.createObjectStore(AUDIT_STORE, { keyPath: 'id', autoIncrement: true });
-        }
-      },
+      upgrade: upgradeStorageDatabase,
     });
 
     const saltRecord = await db.get(META_STORE, META_SALT_KEY);
@@ -110,7 +114,29 @@ export class EncryptedStore {
       throw new Error('Encrypted store metadata is missing the PBKDF2 salt.');
     }
 
-    return new EncryptedStore(db, new Uint8Array(saltRecord.value));
+    return new EncryptedStore(db, new Uint8Array(saltRecord.value), dbName);
+  }
+
+  /**
+   * Reports whether a database already contains the passphrase sentinel for an existing vault.
+   */
+  static async hasSentinel(dbName: string): Promise<boolean> {
+    const db = await openDB<StorageDatabase>(dbName, DATABASE_VERSION, {
+      upgrade: upgradeStorageDatabase,
+    });
+
+    try {
+      return (await db.get(META_STORE, META_SENTINEL_KEY)) !== undefined;
+    } finally {
+      db.close();
+    }
+  }
+
+  /**
+   * Closes and deletes an encrypted database.
+   */
+  static async destroy(dbName: string): Promise<void> {
+    await deleteDB(dbName);
   }
 
   /**
@@ -181,6 +207,22 @@ export class EncryptedStore {
     this.#key = null;
     zeroBytes(this.#bestEffortWipe);
     this.#bestEffortWipe = null;
+  }
+
+  /**
+   * Closes the database connection and drops in-memory key material.
+   */
+  close(): void {
+    this.lock();
+    this.#db.close();
+  }
+
+  /**
+   * Closes and deletes this encrypted database instance.
+   */
+  async destroy(): Promise<void> {
+    this.close();
+    await EncryptedStore.destroy(this.#dbName);
   }
 
   /**
@@ -259,14 +301,8 @@ export class EncryptedStore {
     await transaction.done;
   }
 
-  /**
-   * Deletes the entire database, including metadata and audit records.
-   */
-  async destroy(): Promise<void> {
-    this.lock();
-    const databaseName = this.#db.name;
-    this.#db.close();
-    await deleteDB(databaseName);
+  get databaseName(): string {
+    return this.#dbName;
   }
 
   #requireUnlocked(): CryptoKey {
