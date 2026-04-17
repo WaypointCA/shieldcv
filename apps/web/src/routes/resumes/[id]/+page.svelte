@@ -16,7 +16,14 @@
   import ConfirmDialog from '$lib/components/ConfirmDialog.svelte';
   import VaultUnlockPanel from '$lib/components/VaultUnlockPanel.svelte';
   import { parsePdfTextToResume } from '$lib/resume-import';
-  import { deleteResume, getResume, isVaultUnlocked, saveResume, unlockVault } from '$lib/resume-vault';
+  import {
+    deleteResume,
+    getResume,
+    isVaultUnlocked,
+    saveResume,
+    unlockVault,
+    vaultStatus,
+  } from '$lib/resume-vault';
 
   const resumeId = page.params.id;
   type ConfirmDialogHandle = { showModal: () => Promise<void> };
@@ -260,6 +267,10 @@
       unlockBusy = false;
     }
   }
+
+  $effect(() => {
+    unlocked = $vaultStatus === 'unlocked';
+  });
 
   async function handleSave() {
     dirty = snapshotResume(resume) !== lastSavedSnapshot;

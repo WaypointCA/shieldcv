@@ -2,7 +2,7 @@
   import { goto } from '$app/navigation';
   import { onMount } from 'svelte';
   import VaultUnlockPanel from '$lib/components/VaultUnlockPanel.svelte';
-  import { createResume, isVaultUnlocked, unlockVault } from '$lib/resume-vault';
+  import { createResume, isVaultUnlocked, unlockVault, vaultStatus } from '$lib/resume-vault';
 
   let unlocked = false;
   let creating = true;
@@ -40,6 +40,8 @@
       creating = false;
     }
   });
+
+  $: unlocked = $vaultStatus === 'unlocked';
 </script>
 
 <svelte:head>

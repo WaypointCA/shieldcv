@@ -19,7 +19,7 @@
   } from '@shieldcv/audit';
   import { bindAttackModeAuditIfAvailable } from '$lib/demo-audit';
   import VaultUnlockPanel from '$lib/components/VaultUnlockPanel.svelte';
-  import { isVaultUnlocked, unlockVault } from '$lib/resume-vault';
+  import { isVaultUnlocked, unlockVault, vaultStatus } from '$lib/resume-vault';
 
   type EventMeta = {
     colorClass: string;
@@ -198,6 +198,7 @@
     }
   });
 
+  $: unlocked = $vaultStatus === 'unlocked';
   $: newestFirstEntries = [...entries].reverse();
 </script>
 

@@ -3,6 +3,7 @@
   import DOMPurify from 'dompurify';
   import '../app.css';
   import AppShell from '$lib/components/AppShell.svelte';
+  import VaultInactivityGuard from '$lib/components/VaultInactivityGuard.svelte';
   import { cspViolations } from '$lib/stores/csp-violations';
   import { theme } from '$lib/stores/theme';
 
@@ -23,5 +24,6 @@
 </script>
 
 <AppShell>
+  <VaultInactivityGuard />
   <slot />
 </AppShell>

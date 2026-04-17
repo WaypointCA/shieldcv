@@ -7,6 +7,7 @@
     isVaultUnlocked,
     listResumes,
     lockVault,
+    vaultStatus,
     unlockVault,
   } from '$lib/resume-vault';
   import type { ResumeDocument } from '@shieldcv/resume';
@@ -76,6 +77,8 @@
       loading = false;
     }
   });
+
+  $: unlocked = $vaultStatus === 'unlocked';
 </script>
 
 <svelte:head>

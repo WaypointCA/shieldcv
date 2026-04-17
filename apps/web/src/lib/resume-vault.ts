@@ -9,6 +9,7 @@ const DATABASE_NAME = 'shieldcv-local-vault';
 const RESUME_NAMESPACE = 'resume';
 const GDPR_APPLICATION_NAMESPACE = 'gdpr-applications';
 export const MAX_RESUME_SIZE = 500_000;
+export type VaultLockReason = 'manual' | 'inactivity';
 
 type VaultStatus = 'locked' | 'unlocking' | 'unlocked';
 type AuditStoreBinding = Pick<EncryptedStore, 'get' | 'put' | 'list' | 'delete'>;
@@ -92,10 +93,20 @@ export async function unlockVault(passphrase: string): Promise<void> {
   }
 }
 
-export async function lockVault(): Promise<void> {
+export async function lockVault(options?: { reason?: VaultLockReason }): Promise<void> {
   const store = await resumeStore();
+  if (!store.isUnlocked) {
+    bindAuditStore(undefined);
+    vaultStatus.set('locked');
+    return;
+  }
+  const reason = options?.reason ?? 'manual';
+  const details =
+    reason === 'inactivity'
+      ? 'Locked encrypted resume vault due to inactivity.'
+      : 'Locked encrypted resume vault.';
   try {
-    await appendEntry('vault_locked', 'Locked encrypted resume vault.');
+    await appendEntry('vault_locked', details);
   } catch (error) {
     console.warn('Audit log write failed.', error);
   }

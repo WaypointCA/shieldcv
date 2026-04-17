@@ -3,10 +3,10 @@
   import { appendEntry } from '@shieldcv/audit';
   import {
     AlertTriangle,
-    BookOpen,
     Briefcase,
     CalendarDays,
     CheckCheck,
+    ChevronDown,
     ClipboardCopy,
     Globe,
     Hash,
@@ -20,12 +20,20 @@
   } from 'lucide-svelte';
   import VaultUnlockPanel from '$lib/components/VaultUnlockPanel.svelte';
   import {
+    buildAtsAnalysis,
+    extractEntityKeywords,
+    resumeToPlainText,
+    type AtsAnalysis,
+  } from '$lib/ats-match';
+  import { ATS_DEMO_JOB_DESCRIPTION } from '$lib/fixtures/demo-job-description';
+  import {
     deleteGdprApplication,
     isVaultUnlocked,
     listGdprApplications,
     listResumes,
     saveGdprApplication,
     unlockVault,
+    vaultStatus,
   } from '$lib/resume-vault';
   import type { ResumeDocument } from '@shieldcv/resume';
   import type {
@@ -42,22 +50,25 @@
   type ProgressEvent = import('@shieldcv/ai').ProgressEvent;
 
   type ScanMode = 'resume' | 'demo';
-  type ComplianceTab = 'hipaa' | 'cmmc' | 'gdpr';
+  type ComplianceTab = 'hipaa' | 'cmmc' | 'gdpr' | 'ats';
   type FieldText = { field: string; text: string };
   type HipaaGroupedFindings = Array<{ field: string; items: PhiFinding[] }>;
   type CmmcGroupedFindings = Array<{ field: string; items: CmmcFinding[] }>;
   type DeadlineTone = 'green' | 'yellow' | 'red' | 'gray';
+  type MatchTone = 'green' | 'yellow' | 'red';
 
   let ai: AiModule | null = null;
   let compliance: ComplianceModule | null = null;
 
   let activeTab: ComplianceTab = 'hipaa';
   let mode: ScanMode = 'demo';
+  let atsMode: ScanMode = 'resume';
   let loadingModels = true;
   let modelsReady = false;
   let loadingResumes = true;
   let scanBusy = false;
   let cmmcBusy = false;
+  let atsBusy = false;
   let unlockBusy = false;
   let unlocked = false;
   let error = '';
@@ -68,7 +79,6 @@
   let scanSummary: ScanResult | null = null;
   let scannedResume: ResumeDocument | null = null;
   let scannedLabel = '';
-  let referenceDialog: HTMLDialogElement | null = null;
   let progress = 0;
   let loaded = 0;
   let total = 0;
@@ -92,6 +102,10 @@
   let gdprPlatform = 'LinkedIn';
   let gdprCompany = '';
   let gdprDateApplied = new Date().toISOString().slice(0, 10);
+
+  let atsJobDescription = '';
+  let atsAnalysis: AtsAnalysis | null = null;
+  let atsScannedLabel = '';
 
   function auditWarn(context: string, auditError: unknown) {
     console.warn(`Audit log write failed after ${context}.`, auditError);
@@ -459,14 +473,6 @@
     await copyText(finding.suggestion, `Copied suggestion for ${formatFieldLabel(finding.field)}.`);
   }
 
-  function openReference() {
-    referenceDialog?.showModal();
-  }
-
-  function closeReference() {
-    referenceDialog?.close();
-  }
-
   function formatDate(value: string): string {
     return new Date(value).toLocaleDateString(undefined, {
       year: 'numeric',
@@ -618,6 +624,79 @@
     copyStatus = 'Removed application from the encrypted GDPR tracker.';
   }
 
+  function scoreTone(score: number): MatchTone {
+    if (score > 70) {
+      return 'green';
+    }
+
+    if (score >= 40) {
+      return 'yellow';
+    }
+
+    return 'red';
+  }
+
+  async function runAtsAnalysis(resume: ResumeDocument, label: string, jobDescription: string) {
+    if (!ai) {
+      return;
+    }
+
+    error = '';
+    copyStatus = '';
+    atsBusy = true;
+    atsAnalysis = null;
+    atsScannedLabel = label;
+
+    try {
+      const resumeText = resumeToPlainText(resume);
+      const [entities, resumeEmbedding, jobEmbedding] = await Promise.all([
+        ai.extractEntities(jobDescription, { minScore: 0.5 }),
+        ai.embed(resumeText),
+        ai.embed(jobDescription),
+      ]);
+      const similarity = ai.cosineSimilarity(resumeEmbedding, jobEmbedding);
+      const boundedSimilarity = Number.isFinite(similarity) ? similarity : 0;
+
+      atsAnalysis = buildAtsAnalysis(resume, jobDescription, extractEntityKeywords(entities), boundedSimilarity);
+      void appendEntry(
+        'scan_completed',
+        `Completed ATS match analysis for ${resume.id} with match score ${atsAnalysis.score}%.`,
+      ).catch((auditError) => {
+        auditWarn('ATS match completion', auditError);
+      });
+    } catch (scanError) {
+      error = scanError instanceof Error ? scanError.message : 'Unable to analyze ATS match.';
+    } finally {
+      atsBusy = false;
+    }
+  }
+
+  async function analyzeSelectedResumeAts() {
+    const resume = resumes.find((candidate) => candidate.id === selectedResumeId);
+
+    if (!resume) {
+      error = 'Choose a resume before analyzing ATS match.';
+      return;
+    }
+
+    if (!atsJobDescription.trim()) {
+      error = 'Paste a job description before analyzing ATS match.';
+      return;
+    }
+
+    await runAtsAnalysis(resume, resume.basics.name || 'Untitled resume', atsJobDescription);
+  }
+
+  async function tryAtsDemo() {
+    if (!compliance) {
+      return;
+    }
+
+    atsMode = 'demo';
+    atsJobDescription = ATS_DEMO_JOB_DESCRIPTION;
+    await runAtsAnalysis(compliance.problematicResume, 'Problematic demo resume', ATS_DEMO_JOB_DESCRIPTION);
+  }
+
   onMount(async () => {
     try {
       await ensureModulesLoaded();
@@ -635,6 +714,7 @@
     }
   });
 
+  $: unlocked = $vaultStatus === 'unlocked';
   $: selectedResume = resumes.find((resume) => resume.id === selectedResumeId) ?? null;
   $: fieldTextMap = getFieldTextMap(scannedResume);
   $: groupedFindings = hipaaFindings.reduce<HipaaGroupedFindings>((groups, finding) => {
@@ -677,22 +757,16 @@
         </div>
 
         <div class="phi-hero__actions">
-          {#if activeTab === 'hipaa' && modelsReady}
+          {#if (activeTab === 'hipaa' || activeTab === 'ats') && modelsReady}
             <span class="scan-status" data-testid="models-ready">Models ready</span>
-          {/if}
-          {#if activeTab === 'hipaa'}
-            <button class="shell-button shell-button--mobile" type="button" on:click={openReference}>
-              <BookOpen size={16} />
-              <span>Reference</span>
-            </button>
           {/if}
         </div>
       </div>
 
       <p>
-        ShieldCV now includes three compliance tools: HIPAA for clinical resume review, CMMC for
-        defense-sector resume hygiene, and GDPR for tracking access and erasure requests across job
-        platforms.
+        ShieldCV now includes HIPAA for clinical resume review, CMMC for defense-sector resume
+        hygiene, GDPR for tracking privacy requests across job platforms, and ATS Match for
+        comparing your resume against a job description without leaving the browser.
       </p>
 
       <div class="top-tabs" role="tablist" aria-label="Compliance modules">
@@ -731,6 +805,18 @@
           }}
         >
           GDPR
+        </button>
+        <button
+          class:active={activeTab === 'ats'}
+          class="top-tabs__button"
+          data-testid="tab-ats"
+          type="button"
+          on:click={() => {
+            activeTab = 'ats';
+            error = '';
+          }}
+        >
+          ATS Match
         </button>
       </div>
 
@@ -1099,75 +1185,82 @@
       {#if cmmcEducation}
         <section class="education-grid">
           <section class="content-card education-card">
-            <div class="section-header">
-              <div>
-                <p class="section-kicker">Learn About CMMC</p>
-                <h3>CMMC 2.0 in plain language</h3>
-              </div>
-              <BookOpen size={18} />
-            </div>
+            <details class="education-accordion">
+              <summary class="education-accordion__summary">
+                <div>
+                  <p class="section-kicker">NIST SP 800-171</p>
+                  <h3>Control families to know</h3>
+                </div>
+                <div class="education-accordion__meta">
+                  <span>Click to expand</span>
+                  <span class="education-accordion__chevron"><ChevronDown size={18} /></span>
+                </div>
+              </summary>
 
-            {#each cmmcEducation.overview.split('\n\n') as paragraph}
-              <p>{paragraph}</p>
-            {/each}
+              <div class="education-accordion__content">
+                <div class="reference-list">
+                  {#each cmmcEducation.nistControls as control}
+                    <article class="reference-item">
+                      <strong>{control.id} · {control.family}</strong>
+                      <p>{control.title}</p>
+                      <span>{control.relevance}</span>
+                    </article>
+                  {/each}
+                </div>
+              </div>
+            </details>
           </section>
 
           <section class="content-card education-card">
-            <div class="section-header">
-              <div>
-                <p class="section-kicker">NIST SP 800-171</p>
-                <h3>Control families to know</h3>
-              </div>
-              <ShieldCheck size={18} />
-            </div>
+            <details class="education-accordion">
+              <summary class="education-accordion__summary">
+                <div>
+                  <p class="section-kicker">Likely Resume Risks</p>
+                  <h3>CUI Categories</h3>
+                </div>
+                <div class="education-accordion__meta">
+                  <span>Click to expand</span>
+                  <span class="education-accordion__chevron"><ChevronDown size={18} /></span>
+                </div>
+              </summary>
 
-            <div class="reference-list">
-              {#each cmmcEducation.nistControls as control}
-                <article class="reference-item">
-                  <strong>{control.id} · {control.family}</strong>
-                  <p>{control.title}</p>
-                  <span>{control.relevance}</span>
-                </article>
-              {/each}
-            </div>
+              <div class="education-accordion__content">
+                <div class="reference-list">
+                  {#each cmmcEducation.cuiCategories as category}
+                    <article class="reference-item">
+                      <strong>{category.name}</strong>
+                      <p>{category.description}</p>
+                      <span>{category.resumeRisk}</span>
+                    </article>
+                  {/each}
+                </div>
+              </div>
+            </details>
           </section>
 
           <section class="content-card education-card">
-            <div class="section-header">
-              <div>
-                <p class="section-kicker">Likely Resume Risks</p>
-                <h3>CUI-adjacent categories</h3>
+            <details class="education-accordion">
+              <summary class="education-accordion__summary">
+                <div>
+                  <p class="section-kicker">Safe Description Patterns</p>
+                  <h3>Reference box</h3>
+                </div>
+                <div class="education-accordion__meta">
+                  <span>Click to expand</span>
+                  <span class="education-accordion__chevron"><ChevronDown size={18} /></span>
+                </div>
+              </summary>
+
+              <div class="education-accordion__content">
+                <div class="safe-patterns">
+                  {#each cmmcEducation.safeDescriptionPatterns as pattern}
+                    <button class="pattern-chip" type="button" on:click={() => copyText(pattern, 'Copied a safe description pattern.')}>
+                      {pattern}
+                    </button>
+                  {/each}
+                </div>
               </div>
-              <AlertTriangle size={18} />
-            </div>
-
-            <div class="reference-list">
-              {#each cmmcEducation.cuiCategories as category}
-                <article class="reference-item">
-                  <strong>{category.name}</strong>
-                  <p>{category.description}</p>
-                  <span>{category.resumeRisk}</span>
-                </article>
-              {/each}
-            </div>
-          </section>
-
-          <section class="content-card education-card">
-            <div class="section-header">
-              <div>
-                <p class="section-kicker">Safe Description Patterns</p>
-                <h3>Reference box</h3>
-              </div>
-              <ClipboardCopy size={18} />
-            </div>
-
-            <div class="safe-patterns">
-              {#each cmmcEducation.safeDescriptionPatterns as pattern}
-                <button class="pattern-chip" type="button" on:click={() => copyText(pattern, 'Copied a safe description pattern.')}>
-                  {pattern}
-                </button>
-              {/each}
-            </div>
+            </details>
           </section>
         </section>
       {/if}
@@ -1216,7 +1309,7 @@
           </div>
 
           <section class="gdpr-grid">
-            <section class="content-card gdpr-card">
+          <section class="content-card gdpr-card">
               <div class="section-header">
                 <div>
                   <p class="section-kicker">Add Application</p>
@@ -1249,24 +1342,6 @@
                   Save application
                 </button>
               </div>
-            </section>
-
-            <section class="content-card gdpr-card ai-act-panel">
-              <div class="section-header">
-                <div>
-                  <p class="section-kicker">EU AI Act</p>
-                  <h3>Hiring systems are high-risk</h3>
-                </div>
-                <CalendarDays size={18} />
-              </div>
-
-              <p>{gdprEducation?.aiActInfo.overview}</p>
-              <div class="deadline-pill deadline-pill--yellow">
-                <strong>August 2, 2026</strong>
-                <span>{aiActCountdown()}</span>
-              </div>
-              <p>{gdprEducation?.aiActInfo.hiringClassification}</p>
-              <p>{gdprEducation?.aiActInfo.rightToExplanation}</p>
             </section>
           </section>
 
@@ -1336,119 +1411,330 @@
       {#if gdprEducation}
         <section class="education-grid">
           <section class="content-card education-card">
-            <div class="section-header">
-              <div>
-                <p class="section-kicker">Learn About GDPR</p>
-                <h3>Why it matters for applicants</h3>
-              </div>
-              <BookOpen size={18} />
-            </div>
+            <details class="education-accordion">
+              <summary class="education-accordion__summary">
+                <div>
+                  <p class="section-kicker">Learn About GDPR</p>
+                  <h3>Your Rights Under GDPR</h3>
+                </div>
+                <div class="education-accordion__meta">
+                  <span>Click to expand</span>
+                  <span class="education-accordion__chevron"><ChevronDown size={18} /></span>
+                </div>
+              </summary>
 
-            {#each gdprEducation.overview.split('\n\n') as paragraph}
-              <p>{paragraph}</p>
-            {/each}
+              <div class="education-accordion__content">
+                {#each gdprEducation.overview.split('\n\n') as paragraph}
+                  <p>{paragraph}</p>
+                {/each}
+                <div class="reference-list">
+                  {#each gdprEducation.rights as right}
+                    <article class="reference-item">
+                      <strong>{right.article} · {right.title}</strong>
+                      <p>{right.description}</p>
+                      <span>{right.applicationToJobSeekers}</span>
+                    </article>
+                  {/each}
+                </div>
+              </div>
+            </details>
           </section>
 
           <section class="content-card education-card">
-            <div class="section-header">
-              <div>
-                <p class="section-kicker">Articles 13-22</p>
-                <h3>Rights job seekers actually use</h3>
-              </div>
-              <ShieldCheck size={18} />
-            </div>
+            <details class="education-accordion">
+              <summary class="education-accordion__summary">
+                <div>
+                  <p class="section-kicker">EU AI Act</p>
+                  <h3>High-risk hiring systems</h3>
+                </div>
+                <div class="education-accordion__meta">
+                  <span>Click to expand</span>
+                  <span class="education-accordion__chevron"><ChevronDown size={18} /></span>
+                </div>
+              </summary>
 
-            <div class="reference-list">
-              {#each gdprEducation.rights as right}
-                <article class="reference-item">
-                  <strong>{right.article} · {right.title}</strong>
-                  <p>{right.description}</p>
-                  <span>{right.applicationToJobSeekers}</span>
-                </article>
-              {/each}
-            </div>
+              <div class="education-accordion__content">
+                <p>{gdprEducation.aiActInfo.overview}</p>
+                <div class="deadline-pill deadline-pill--yellow">
+                  <strong>August 2, 2026</strong>
+                  <span>{aiActCountdown()}</span>
+                </div>
+                <p>{gdprEducation.aiActInfo.hiringClassification}</p>
+                <p>{gdprEducation.aiActInfo.rightToExplanation}</p>
+              </div>
+            </details>
           </section>
 
           <section class="content-card education-card">
-            <div class="section-header">
-              <div>
-                <p class="section-kicker">Common Platforms</p>
-                <h3>Where requests usually start</h3>
-              </div>
-              <Globe size={18} />
-            </div>
+            <details class="education-accordion">
+              <summary class="education-accordion__summary">
+                <div>
+                  <p class="section-kicker">Common Platforms</p>
+                  <h3>Platform DSAR Links</h3>
+                </div>
+                <div class="education-accordion__meta">
+                  <span>Click to expand</span>
+                  <span class="education-accordion__chevron"><ChevronDown size={18} /></span>
+                </div>
+              </summary>
 
-            <div class="reference-list">
-              {#each gdprEducation.commonPlatforms as platform}
-                <article class="reference-item">
-                  <strong>{platform.name}</strong>
-                  <p><a href={platform.dsarUrl} target="_blank" rel="noreferrer">Request access or deletion</a></p>
-                  <p><a href={platform.privacyPolicyUrl} target="_blank" rel="noreferrer">Privacy policy</a></p>
-                  <span>{platform.typicalResponseTime}</span>
-                </article>
-              {/each}
-            </div>
+              <div class="education-accordion__content">
+                <div class="reference-list">
+                  {#each gdprEducation.commonPlatforms as platform}
+                    <article class="reference-item">
+                      <strong>{platform.name}</strong>
+                      <p><a href={platform.dsarUrl} target="_blank" rel="noreferrer">Request access or deletion</a></p>
+                      <p><a href={platform.privacyPolicyUrl} target="_blank" rel="noreferrer">Privacy policy</a></p>
+                      <span>{platform.typicalResponseTime}</span>
+                    </article>
+                  {/each}
+                </div>
+              </div>
+            </details>
           </section>
         </section>
       {/if}
     {/if}
-  </div>
 
-  {#if activeTab === 'hipaa'}
-    <aside class="content-card phi-reference">
-      <div class="section-header">
-        <div>
-          <p class="section-kicker">Reference</p>
-          <h3>The 18 HIPAA identifiers</h3>
+    {#if activeTab === 'ats'}
+      <section class="content-card phi-hero">
+        <div class="section-header">
+          <div>
+            <p class="section-kicker">ATS Match</p>
+            <h3>Compare your resume against a job description before you apply</h3>
+          </div>
         </div>
-        <BookOpen size={18} />
-      </div>
 
-      <p>
-        HIPAA’s Safe Harbor method requires removing these 18 types of identifiers from protected
-        health information before it can be considered de-identified.
-      </p>
+        <p class="privacy-note">
+          The job description you paste stays in your browser. It is never sent to any server.
+        </p>
 
-      <div class="reference-list">
-        {#each referenceItems as item}
-          <article class="reference-item">
-            <strong>{item.title}</strong>
-            <p>{item.description}</p>
-            <span>{item.citation}</span>
-          </article>
-        {/each}
-      </div>
+        <div class="mode-toggle" role="tablist" aria-label="ATS mode">
+          <button
+            class:active={atsMode === 'resume'}
+            class="mode-toggle__button"
+            type="button"
+            on:click={() => {
+              atsMode = 'resume';
+              error = '';
+            }}
+          >
+            Analyze my resume
+          </button>
+          <button
+            class:active={atsMode === 'demo'}
+            class="mode-toggle__button"
+            type="button"
+            on:click={() => {
+              atsMode = 'demo';
+              if (!atsJobDescription.trim()) {
+                atsJobDescription = ATS_DEMO_JOB_DESCRIPTION;
+              }
+              error = '';
+            }}
+          >
+            Try the demo
+          </button>
+        </div>
 
-      <a class="shell-button" href="/security">View ShieldCV security posture</a>
-    </aside>
-  {/if}
+        {#if atsMode === 'resume' && !unlocked}
+          <VaultUnlockPanel
+            busy={unlockBusy}
+            copy="Unlock your on-device vault to compare a stored resume against a pasted job description without sending either off-device."
+            error=""
+            onUnlock={handleUnlock}
+            title="Unlock your resumes"
+          />
+        {:else}
+          <div class="ats-panel">
+            {#if atsMode === 'resume'}
+              <label class="field">
+                <span>Choose a resume</span>
+                <select class="field-input" bind:value={selectedResumeId} disabled={loadingResumes || atsBusy}>
+                  {#if resumes.length === 0}
+                    <option value="">No resumes available</option>
+                  {:else}
+                    {#each resumes as resume}
+                      <option value={resume.id}>{resume.basics.name || 'Untitled resume'}</option>
+                    {/each}
+                  {/if}
+                </select>
+              </label>
+            {:else}
+              <div class="gdpr-note">Demo mode uses the built-in clinical resume and sample job description.</div>
+            {/if}
+
+            <label class="field">
+              <span>Job description</span>
+              <textarea
+                bind:value={atsJobDescription}
+                class="field-input field-textarea ats-textarea"
+                placeholder="Paste the job description here..."
+                rows="9"
+              ></textarea>
+            </label>
+
+            <div class="ats-actions">
+              <button
+                class="shell-button shell-button--primary"
+                data-testid="analyze-ats"
+                type="button"
+                disabled={!modelsReady || atsBusy || !atsJobDescription.trim() || (atsMode === 'resume' && !selectedResume)}
+                on:click={atsMode === 'demo' ? tryAtsDemo : analyzeSelectedResumeAts}
+              >
+                {atsBusy ? 'Analyzing match…' : 'Analyze Match'}
+              </button>
+
+              {#if atsMode === 'demo'}
+                <button
+                  class="shell-button"
+                  data-testid="ats-demo"
+                  type="button"
+                  disabled={!modelsReady || atsBusy}
+                  on:click={tryAtsDemo}
+                >
+                  Try the demo
+                </button>
+              {/if}
+            </div>
+          </div>
+        {/if}
+
+        {#if atsBusy}
+          <div class="scan-progress">
+            <div class="scan-progress__copy">
+              <span>Analyzing match...</span>
+              <span>Embedding the resume and job description locally in your browser</span>
+            </div>
+            <progress aria-label="ATS match analysis progress"></progress>
+          </div>
+        {/if}
+      </section>
+
+      {#if !atsAnalysis && !atsJobDescription.trim()}
+        <section class="content-card empty-state">
+          <div class="empty-state__icon">
+            <Briefcase size={22} />
+          </div>
+          <div>
+            <p class="section-kicker">ATS Match</p>
+            <h3>Paste a job description to see how your resume matches</h3>
+            <p>All analysis runs locally in your browser.</p>
+          </div>
+        </section>
+      {/if}
+
+      {#if atsAnalysis}
+        <section class="content-card ats-summary" data-testid="ats-summary">
+          <div class="phi-summary__header">
+            <div>
+              <p class="section-kicker">Match Summary</p>
+              <h3>{atsScannedLabel} vs. job description</h3>
+            </div>
+            <span class={`ats-score ats-score--${scoreTone(atsAnalysis.score)}`}>{atsAnalysis.score}% match</span>
+          </div>
+          <p>ShieldCV compares the full resume text and job description embeddings using cosine similarity, then surfaces missing terms to review.</p>
+        </section>
+
+        <section class="ats-grid">
+          <section class="content-card education-card">
+            <div class="section-header">
+              <div>
+                <p class="section-kicker">Keywords Found</p>
+                <h3>{atsAnalysis.foundKeywords.length} terms already present</h3>
+              </div>
+            </div>
+            <div class="keyword-list" data-testid="ats-keywords-found">
+              {#if atsAnalysis.foundKeywords.length === 0}
+                <p class="keyword-list__empty">No highlighted job-description terms were detected in this resume.</p>
+              {:else}
+                {#each atsAnalysis.foundKeywords as keyword}
+                  <span class="keyword-chip keyword-chip--found">{keyword}</span>
+                {/each}
+              {/if}
+            </div>
+          </section>
+
+          <section class="content-card education-card">
+            <div class="section-header">
+              <div>
+                <p class="section-kicker">Keywords Missing</p>
+                <h3>{atsAnalysis.missingKeywords.length} terms to review</h3>
+              </div>
+            </div>
+            <div class="keyword-list" data-testid="ats-keywords-missing">
+              {#if atsAnalysis.missingKeywords.length === 0}
+                <p class="keyword-list__empty">No missing terms surfaced from this job description.</p>
+              {:else}
+                {#each atsAnalysis.missingKeywords as keyword}
+                  <span class="keyword-chip keyword-chip--missing">{keyword}</span>
+                {/each}
+              {/if}
+            </div>
+          </section>
+        </section>
+
+        <section class="content-card education-card">
+          <div class="section-header">
+            <div>
+              <p class="section-kicker">Suggestions</p>
+              <h3>Where missing terms could fit naturally</h3>
+            </div>
+          </div>
+
+          <div class="suggestions-list">
+            {#if atsAnalysis.suggestions.length === 0}
+              <p class="keyword-list__empty">No placement suggestions needed.</p>
+            {:else}
+              {#each atsAnalysis.suggestions as suggestion}
+                <article class="suggestion-item">
+                  <strong>{suggestion.keyword}</strong>
+                  <p>{suggestion.suggestion}</p>
+                </article>
+              {/each}
+            {/if}
+          </div>
+        </section>
+      {/if}
+    {/if}
+
+    {#if activeTab === 'hipaa'}
+      <section class="content-card education-card">
+        <details class="education-accordion">
+          <summary class="education-accordion__summary">
+            <div>
+              <p class="section-kicker">Reference</p>
+              <h3>The 18 HIPAA Identifiers</h3>
+            </div>
+            <div class="education-accordion__meta">
+              <span>Click to expand</span>
+              <span class="education-accordion__chevron"><ChevronDown size={18} /></span>
+            </div>
+          </summary>
+
+          <div class="education-accordion__content">
+            <p>
+              HIPAA’s Safe Harbor method requires removing these 18 types of identifiers from protected
+              health information before it can be considered de-identified.
+            </p>
+
+            <div class="reference-list">
+              {#each referenceItems as item}
+                <article class="reference-item">
+                  <strong>{item.title}</strong>
+                  <p>{item.description}</p>
+                  <span>{item.citation}</span>
+                </article>
+              {/each}
+            </div>
+
+            <a class="shell-button" href="/security">View ShieldCV security posture</a>
+          </div>
+        </details>
+      </section>
+    {/if}
+  </div>
 </section>
-
-<dialog bind:this={referenceDialog} class="posture-dialog phi-reference-dialog">
-  <div class="dialog-header">
-    <div>
-      <p class="section-kicker">Reference</p>
-      <h4>The 18 HIPAA identifiers</h4>
-    </div>
-    <button class="dialog-close" type="button" aria-label="Close reference" on:click={closeReference}>×</button>
-  </div>
-  <div class="dialog-body">
-    <p>
-      HIPAA’s Safe Harbor method requires removing these 18 types of identifiers from protected health
-      information before it can be considered de-identified.
-    </p>
-    <div class="reference-list">
-      {#each referenceItems as item}
-        <article class="reference-item">
-          <strong>{item.title}</strong>
-          <p>{item.description}</p>
-          <span>{item.citation}</span>
-        </article>
-      {/each}
-    </div>
-    <a class="shell-button" href="/security" on:click={closeReference}>View ShieldCV security posture</a>
-  </div>
-</dialog>
 
 <style>
   .scan-shell {
@@ -1459,7 +1745,8 @@
 
   .scan-primary,
   .phi-findings,
-  .education-grid {
+  .education-grid,
+  .ats-grid {
     display: grid;
     gap: 1rem;
   }
@@ -1472,15 +1759,19 @@
   .phi-hero,
   .phi-summary,
   .phi-group,
-  .phi-reference,
   .education-card,
-  .gdpr-card {
+  .gdpr-card,
+  .ats-summary {
     display: grid;
     gap: 1rem;
   }
 
   .education-grid {
     grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr));
+  }
+
+  .ats-grid {
+    grid-template-columns: repeat(auto-fit, minmax(18rem, 1fr));
   }
 
   .phi-hero__actions {
@@ -1516,9 +1807,11 @@
   }
 
   .phi-panel,
+  .ats-panel,
   .gdpr-toolbar,
   .gdpr-form,
   .gdpr-grid,
+  .ats-actions,
   .application-card,
   .application-card__header,
   .application-card__meta,
@@ -1544,6 +1837,7 @@
   }
 
   .phi-panel,
+  .ats-panel,
   .gdpr-toolbar {
     align-items: end;
   }
@@ -1565,6 +1859,14 @@
 
   .scan-progress progress {
     width: 100%;
+  }
+
+  .privacy-note {
+    background: rgba(16, 37, 66, 0.05);
+    border: 1px solid rgba(16, 37, 66, 0.09);
+    border-radius: 1rem;
+    margin: 0;
+    padding: 0.9rem 1rem;
   }
 
   .scan-status,
@@ -1695,6 +1997,45 @@
     grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr));
   }
 
+  .education-accordion {
+    border-radius: 1rem;
+  }
+
+  .education-accordion__summary {
+    align-items: center;
+    cursor: pointer;
+    display: flex;
+    gap: 1rem;
+    justify-content: space-between;
+    list-style: none;
+  }
+
+  .education-accordion__summary::-webkit-details-marker {
+    display: none;
+  }
+
+  .education-accordion__meta {
+    align-items: center;
+    color: rgba(15, 23, 42, 0.62);
+    display: inline-flex;
+    flex-shrink: 0;
+    gap: 0.45rem;
+  }
+
+  .education-accordion__chevron {
+    transition: transform 180ms ease;
+  }
+
+  .education-accordion[open] .education-accordion__chevron {
+    transform: rotate(180deg);
+  }
+
+  .education-accordion__content {
+    display: grid;
+    gap: 1rem;
+    margin-top: 1rem;
+  }
+
   .reference-item {
     background: rgba(255, 255, 255, 0.7);
     border: 1px solid rgba(15, 23, 42, 0.08);
@@ -1745,12 +2086,6 @@
     grid-template-columns: repeat(auto-fit, minmax(10rem, max-content));
   }
 
-  .ai-act-panel {
-    background:
-      radial-gradient(circle at top right, rgba(245, 158, 11, 0.16), transparent 35%),
-      rgba(255, 255, 255, 0.9);
-  }
-
   .phi-copy-status {
     color: #166534;
     margin: 0;
@@ -1758,6 +2093,64 @@
 
   .field-error {
     color: #991b1b;
+    margin: 0;
+  }
+
+  .ats-textarea {
+    min-height: 12rem;
+    resize: vertical;
+  }
+
+  .ats-score,
+  .keyword-chip {
+    align-items: center;
+    border-radius: 999px;
+    display: inline-flex;
+    font-weight: 700;
+    gap: 0.35rem;
+    justify-self: start;
+    padding: 0.45rem 0.85rem;
+  }
+
+  .ats-score--green,
+  .keyword-chip--found {
+    background: rgba(22, 163, 74, 0.12);
+    color: #166534;
+  }
+
+  .ats-score--yellow {
+    background: rgba(217, 119, 6, 0.12);
+    color: #92400e;
+  }
+
+  .ats-score--red,
+  .keyword-chip--missing {
+    background: rgba(220, 38, 38, 0.12);
+    color: #991b1b;
+  }
+
+  .keyword-list,
+  .suggestions-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.65rem;
+  }
+
+  .keyword-list__empty {
+    margin: 0;
+  }
+
+  .suggestion-item {
+    background: rgba(255, 255, 255, 0.72);
+    border: 1px solid rgba(15, 23, 42, 0.08);
+    border-radius: 1rem;
+    display: grid;
+    gap: 0.45rem;
+    padding: 0.95rem;
+    width: 100%;
+  }
+
+  .suggestion-item p {
     margin: 0;
   }
 
@@ -1778,36 +2171,14 @@
     justify-content: space-between;
   }
 
-  .posture-dialog {
-    border: none;
-    border-radius: 1.25rem;
-    max-width: 52rem;
-    padding: 0;
-    width: min(52rem, calc(100vw - 2rem));
-  }
-
-  .dialog-header,
-  .dialog-body {
-    display: grid;
-    gap: 1rem;
-    padding: 1.25rem;
-  }
-
-  .dialog-close {
-    background: transparent;
-    border: none;
-    cursor: pointer;
-    font-size: 1.5rem;
-    justify-self: end;
-  }
-
   :global(:root:not([data-theme='light'])) .top-tabs__button,
   :global(:root:not([data-theme='light'])) .mode-toggle__button,
   :global(:root:not([data-theme='light'])) .field-input,
   :global(:root:not([data-theme='light'])) .finding-card,
   :global(:root:not([data-theme='light'])) .reference-item,
   :global(:root:not([data-theme='light'])) .application-card,
-  :global(:root:not([data-theme='light'])) .pattern-chip {
+  :global(:root:not([data-theme='light'])) .pattern-chip,
+  :global(:root:not([data-theme='light'])) .suggestion-item {
     background: #1e293b;
     border-color: #334155;
     color: #f8fafc;
@@ -1824,6 +2195,12 @@
   :global(:root:not([data-theme='light'])) .gdpr-note {
     background: #1d4ed8;
     color: #eff6ff;
+  }
+
+  :global(:root:not([data-theme='light'])) .privacy-note {
+    background: #0f172a;
+    border-color: #334155;
+    color: #e2e8f0;
   }
 
   :global(:root:not([data-theme='light'])) .severity-pill--high,
@@ -1871,6 +2248,11 @@
     color: #cbd5e1;
   }
 
+  :global(:root:not([data-theme='light'])) .education-accordion__meta,
+  :global(:root:not([data-theme='light'])) .keyword-list__empty {
+    color: #cbd5e1;
+  }
+
   :global(:root:not([data-theme='light'])) .phi-copy-status {
     color: #86efac;
   }
@@ -1883,10 +2265,21 @@
     color: #60a5fa;
   }
 
-  :global(:root:not([data-theme='light'])) .ai-act-panel {
-    background:
-      radial-gradient(circle at top right, rgba(245, 158, 11, 0.18), transparent 35%),
-      #1e293b;
+  :global(:root:not([data-theme='light'])) .ats-score--green,
+  :global(:root:not([data-theme='light'])) .keyword-chip--found {
+    background: #15803d;
+    color: #f0fdf4;
+  }
+
+  :global(:root:not([data-theme='light'])) .ats-score--yellow {
+    background: #b45309;
+    color: #fff7ed;
+  }
+
+  :global(:root:not([data-theme='light'])) .ats-score--red,
+  :global(:root:not([data-theme='light'])) .keyword-chip--missing {
+    background: #b91c1c;
+    color: #fef2f2;
   }
 
   @media (max-width: 960px) {
