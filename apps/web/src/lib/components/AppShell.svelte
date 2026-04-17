@@ -1,5 +1,6 @@
 <script lang="ts">
   import {
+    ClipboardList,
     FileText,
     Radar,
     ScanSearch,
@@ -25,6 +26,7 @@
   const navItems: NavItem[] = [
     { href: '/resumes', label: 'Resumes', icon: FileText },
     { href: '/scan', label: 'Scan', icon: ScanSearch },
+    { href: '/tracker', label: 'Tracker', icon: ClipboardList },
     { href: '/audit', label: 'Audit', icon: Radar },
     { href: '/settings', label: 'Settings', icon: Settings },
     { href: '/attack-mode', label: 'Attack Mode', icon: ShieldAlert, tone: 'danger' },

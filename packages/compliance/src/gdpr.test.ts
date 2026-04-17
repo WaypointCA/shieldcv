@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from 'vitest';
 import {
   calculateDeadline,
   createApplicationRecord,
+  createTrackerApplicationRecord,
   generateDsarEmail,
   generateErasureEmail,
   getGdprEducation,
@@ -45,6 +46,26 @@ describe('GDPR helpers', () => {
     expect(email.body).toContain('Article 15');
     expect(email.body).toContain('Northwind Defense');
     expect(email.body).toContain('You are required to respond within 30 days');
+  });
+
+  it('createTrackerApplicationRecord extends the base record with tracker fields', () => {
+    const randomUUID = vi.fn(() => '550e8400-e29b-41d4-a716-446655440001');
+    vi.stubGlobal('crypto', { randomUUID });
+
+    const record = createTrackerApplicationRecord('LinkedIn', 'Acme', 'Security Analyst');
+
+    expect(record).toEqual(
+      expect.objectContaining({
+        id: '550e8400-e29b-41d4-a716-446655440001',
+        platform: 'LinkedIn',
+        company: 'Acme',
+        positionTitle: 'Security Analyst',
+        status: 'applied',
+        dsarSent: false,
+        erasureRequested: false,
+      }),
+    );
+    vi.unstubAllGlobals();
   });
 
   it('generateErasureEmail produces correct subject and body', () => {

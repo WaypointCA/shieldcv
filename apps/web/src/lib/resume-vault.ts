@@ -1,5 +1,5 @@
 import { appendEntry, getEntries, initAudit, type AuditEvent } from '@shieldcv/audit';
-import type { ApplicationRecord } from '@shieldcv/compliance';
+import type { ApplicationRecord, TrackerApplicationRecord } from '@shieldcv/compliance';
 import { createBlankResume, normalizeResumeDocument, type ResumeDocument } from '@shieldcv/resume';
 import { EncryptedStore } from '@shieldcv/storage';
 import { writable } from 'svelte/store';
@@ -8,6 +8,7 @@ import { ATTACK_MODE_AUDIT_DATABASE_NAME, ATTACK_MODE_AUDIT_FLAG } from '$lib/de
 const DATABASE_NAME = 'shieldcv-local-vault';
 const RESUME_NAMESPACE = 'resume';
 const GDPR_APPLICATION_NAMESPACE = 'gdpr-applications';
+const TRACKER_APPLICATION_NAMESPACE = 'tracker';
 export const MAX_RESUME_SIZE = 500_000;
 export type VaultLockReason = 'manual' | 'inactivity';
 
@@ -69,6 +70,53 @@ function fireAndForgetAudit(event: AuditEvent, details: string): void {
   void appendEntry(event, details).catch((error) => {
     console.warn('Audit log write failed.', error);
   });
+}
+
+function normalizeTrackerApplication(record: ApplicationRecord | TrackerApplicationRecord): TrackerApplicationRecord {
+  return {
+    ...record,
+    positionTitle:
+      'positionTitle' in record && typeof record.positionTitle === 'string' ? record.positionTitle : '',
+    status:
+      'status' in record &&
+      typeof record.status === 'string' &&
+      ['applied', 'screening', 'interview', 'offer', 'rejected', 'withdrawn'].includes(record.status)
+        ? record.status
+        : 'applied',
+  };
+}
+
+async function migrateLegacyGdprApplications(store: EncryptedStore): Promise<void> {
+  const trackerIds = await store.list(TRACKER_APPLICATION_NAMESPACE);
+  const legacyIds = await store.list(GDPR_APPLICATION_NAMESPACE);
+
+  if (legacyIds.length === 0) {
+    return;
+  }
+
+  const trackerIdSet = new Set(trackerIds);
+
+  await Promise.all(
+    legacyIds.map(async (id) => {
+      if (trackerIdSet.has(id)) {
+        await store.delete(GDPR_APPLICATION_NAMESPACE, id);
+        return;
+      }
+
+      const legacyRecord = await store.get<ApplicationRecord>(GDPR_APPLICATION_NAMESPACE, id);
+
+      if (!legacyRecord) {
+        return;
+      }
+
+      await store.put(
+        TRACKER_APPLICATION_NAMESPACE,
+        legacyRecord.id,
+        normalizeTrackerApplication(legacyRecord),
+      );
+      await store.delete(GDPR_APPLICATION_NAMESPACE, id);
+    }),
+  );
 }
 
 export async function unlockVault(passphrase: string): Promise<void> {
@@ -164,27 +212,83 @@ export async function deleteResume(id: string): Promise<void> {
   fireAndForgetAudit('resume_deleted', `Deleted resume ${id}`);
 }
 
-export async function listGdprApplications(): Promise<ApplicationRecord[]> {
-  const store = await resumeStore();
-  const ids = await store.list(GDPR_APPLICATION_NAMESPACE);
-  const records = await Promise.all(
-    ids.map((id) => store.get<ApplicationRecord>(GDPR_APPLICATION_NAMESPACE, id)),
-  );
-
-  return records
-    .filter((record): record is ApplicationRecord => record !== undefined)
-    .sort((left, right) => right.dateApplied.localeCompare(left.dateApplied));
+export async function listGdprApplications(): Promise<TrackerApplicationRecord[]> {
+  const records = await listTrackerApplications();
+  return records;
 }
 
 export async function saveGdprApplication(record: ApplicationRecord): Promise<ApplicationRecord> {
-  const store = await resumeStore();
-  await store.put(GDPR_APPLICATION_NAMESPACE, record.id, record);
-  return record;
+  return saveTrackerApplication(normalizeTrackerApplication(record));
 }
 
 export async function deleteGdprApplication(id: string): Promise<void> {
+  await deleteTrackerApplication(id);
+}
+
+export async function listTrackerApplications(): Promise<TrackerApplicationRecord[]> {
   const store = await resumeStore();
-  await store.delete(GDPR_APPLICATION_NAMESPACE, id);
+  await migrateLegacyGdprApplications(store);
+  const ids = await store.list(TRACKER_APPLICATION_NAMESPACE);
+  const records = await Promise.all(
+    ids.map((id) => store.get<TrackerApplicationRecord>(TRACKER_APPLICATION_NAMESPACE, id)),
+  );
+
+  return records
+    .filter((record): record is TrackerApplicationRecord => record !== undefined)
+    .map((record) => normalizeTrackerApplication(record))
+    .sort((left, right) => right.dateApplied.localeCompare(left.dateApplied));
+}
+
+export async function saveTrackerApplication(
+  record: TrackerApplicationRecord,
+): Promise<TrackerApplicationRecord> {
+  const store = await resumeStore();
+  await migrateLegacyGdprApplications(store);
+  await store.put(TRACKER_APPLICATION_NAMESPACE, record.id, normalizeTrackerApplication(record));
+  return record;
+}
+
+export async function deleteTrackerApplication(id: string): Promise<void> {
+  const store = await resumeStore();
+  await migrateLegacyGdprApplications(store);
+  await store.delete(TRACKER_APPLICATION_NAMESPACE, id);
+}
+
+export async function createTrackerApplication(
+  record: TrackerApplicationRecord,
+): Promise<TrackerApplicationRecord> {
+  const normalized = normalizeTrackerApplication(record);
+  await saveTrackerApplication(normalized);
+  fireAndForgetAudit(
+    'application_created',
+    `Created application for ${normalized.company} - ${normalized.positionTitle} on ${normalized.platform}.`,
+  );
+  return normalized;
+}
+
+export async function updateTrackerApplication(
+  record: TrackerApplicationRecord,
+): Promise<TrackerApplicationRecord> {
+  const normalized = normalizeTrackerApplication(record);
+  await saveTrackerApplication(normalized);
+  fireAndForgetAudit(
+    'application_updated',
+    `Updated application for ${normalized.company} - ${normalized.positionTitle} on ${normalized.platform}.`,
+  );
+  return normalized;
+}
+
+export async function removeTrackerApplication(id: string): Promise<void> {
+  const store = await resumeStore();
+  await migrateLegacyGdprApplications(store);
+  const existing = await store.get<TrackerApplicationRecord>(TRACKER_APPLICATION_NAMESPACE, id);
+  await store.delete(TRACKER_APPLICATION_NAMESPACE, id);
+  fireAndForgetAudit(
+    'application_deleted',
+    existing
+      ? `Deleted application for ${existing.company} - ${existing.positionTitle} on ${existing.platform}.`
+      : `Deleted application ${id}.`,
+  );
 }
 
 function clearBrowserStorage(): void {

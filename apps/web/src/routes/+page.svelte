@@ -2,6 +2,7 @@
   import {
     ArrowRight,
     ChartNoAxesColumn,
+    ClipboardList,
     ExternalLink,
     ScanSearch,
     Shield,
@@ -37,6 +38,14 @@
       href: '/attack-mode',
       linkLabel: 'Enter Attack Mode',
       icon: ShieldAlert,
+    },
+    {
+      title: 'Application Tracker',
+      description:
+        'Track every job application in one encrypted place. Know which companies have your data. Exercise your GDPR rights with one click.',
+      href: '/tracker',
+      linkLabel: 'Start tracking',
+      icon: ClipboardList,
     },
   ] as const;
 

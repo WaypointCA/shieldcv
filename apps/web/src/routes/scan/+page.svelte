@@ -28,12 +28,13 @@
   } from '$lib/ats-match';
   import { ATS_DEMO_JOB_DESCRIPTION } from '$lib/fixtures/demo-job-description';
   import {
-    deleteGdprApplication,
+    createTrackerApplication,
     isVaultUnlocked,
     listGdprApplications,
     listResumes,
-    saveGdprApplication,
+    removeTrackerApplication,
     unlockVault,
+    updateTrackerApplication,
     vaultStatus,
   } from '$lib/resume-vault';
   import type { ResumeDocument } from '@shieldcv/resume';
@@ -44,6 +45,7 @@
     GdprEducationContent,
     PhiFinding,
     ScanResult,
+    TrackerApplicationRecord,
   } from '@shieldcv/compliance';
 
   type AiModule = typeof import('@shieldcv/ai');
@@ -98,7 +100,7 @@
   let cmmcScannedLabel = '';
 
   let gdprEducation: GdprEducationContent | null = null;
-  let applications: ApplicationRecord[] = [];
+  let applications: TrackerApplicationRecord[] = [];
   let platformOptions: string[] = [];
   let gdprPlatform = 'LinkedIn';
   let gdprCompany = '';
@@ -560,14 +562,14 @@
       return;
     }
 
-    const record = compliance?.createApplicationRecord(gdprPlatform, gdprCompany);
+    const record = compliance?.createTrackerApplicationRecord(gdprPlatform, gdprCompany, '');
 
     if (!record) {
       return;
     }
 
     const appliedAt = new Date(`${gdprDateApplied}T00:00:00.000Z`).toISOString();
-    await saveGdprApplication({
+    await createTrackerApplication({
       ...record,
       dateApplied: appliedAt,
     });
@@ -577,7 +579,7 @@
     copyStatus = `Saved ${gdprPlatform} application for ${applications[0]?.company ?? 'company'}.`;
   }
 
-  async function generateGdprEmail(record: ApplicationRecord, kind: 'dsar' | 'erasure') {
+  async function generateGdprEmail(record: TrackerApplicationRecord, kind: 'dsar' | 'erasure') {
     if (!compliance) {
       return;
     }
@@ -594,7 +596,7 @@
     );
 
     const now = new Date().toISOString();
-    const updatedRecord: ApplicationRecord =
+    const updatedRecord: TrackerApplicationRecord =
       kind === 'dsar'
         ? {
             ...record,
@@ -608,7 +610,7 @@
             erasureDate: now,
           };
 
-    await saveGdprApplication(updatedRecord);
+    await updateTrackerApplication(updatedRecord);
     applications = await listGdprApplications();
 
     if (kind === 'dsar') {
@@ -621,7 +623,7 @@
   }
 
   async function removeApplication(id: string) {
-    await deleteGdprApplication(id);
+    await removeTrackerApplication(id);
     applications = await listGdprApplications();
     copyStatus = 'Removed application from the encrypted GDPR tracker.';
   }

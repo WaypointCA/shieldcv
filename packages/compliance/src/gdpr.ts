@@ -11,6 +11,19 @@ export interface ApplicationRecord {
   notes: string;
 }
 
+export type ApplicationStatus =
+  | 'applied'
+  | 'screening'
+  | 'interview'
+  | 'offer'
+  | 'rejected'
+  | 'withdrawn';
+
+export interface TrackerApplicationRecord extends ApplicationRecord {
+  positionTitle: string;
+  status: ApplicationStatus;
+}
+
 export interface GdprEducationContent {
   overview: string;
   rights: Array<{
@@ -52,6 +65,18 @@ export function createApplicationRecord(platform: string, company: string): Appl
     dsarSent: false,
     erasureRequested: false,
     notes: '',
+  };
+}
+
+export function createTrackerApplicationRecord(
+  platform: string,
+  company: string,
+  positionTitle: string,
+): TrackerApplicationRecord {
+  return {
+    ...createApplicationRecord(platform, company),
+    positionTitle: positionTitle.trim(),
+    status: 'applied',
   };
 }
 

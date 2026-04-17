@@ -2,6 +2,7 @@
   import { onMount } from 'svelte';
   import {
     AlertTriangle,
+    BriefcaseBusiness,
     Download,
     FileText,
     Search,
@@ -57,6 +58,10 @@
 
     if (event.startsWith('resume_')) {
       return { colorClass: 'audit-event--resume', icon: FileText, label: event.replaceAll('_', ' ') };
+    }
+
+    if (event.startsWith('application_')) {
+      return { colorClass: 'audit-event--resume', icon: BriefcaseBusiness, label: event.replaceAll('_', ' ') };
     }
 
     if (event.startsWith('scan_')) {
